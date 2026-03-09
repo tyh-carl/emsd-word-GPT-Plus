@@ -105,14 +105,16 @@
                 :placeholder="
                   settingPreset.api.optionObj
                     .find(option => option.value === settingForm.api)
-                    ?.label.replace('official', 'OpenAI') || settingForm.api
+                    ?.label.replace('official', 'OpenAI')
+                    .replace('openaiCompatible', 'OpenAI Compatible') || settingForm.api
                 "
               >
                 <template #item="{ item }">
                   {{
                     settingPreset.api.optionObj
                       .find(option => option.value === item)
-                      ?.label.replace('official', 'OpenAI') || item
+                      ?.label.replace('official', 'OpenAI')
+                      .replace('openaiCompatible', 'OpenAI Compatible') || item
                   }}
                 </template>
               </SingleSelect>
@@ -173,7 +175,7 @@
               <SettingCard v-for="item in getApiSelectSettings(platform)" :key="item">
                 <SingleSelect
                   v-model="settingForm[item as SettingNames]"
-                  :key-list="getMergedModelOptions(platform)"
+                  :key-list="getSelectOptions(platform, item)"
                   :title="t(getLabel(item))"
                   :fronticon="false"
                   :placeholder="settingForm[item as SettingNames]"
@@ -563,13 +565,20 @@ const getApiSelectSettings = (platform: string) => {
   )
 }
 
+const getSelectOptions = (platform: string, item: string): string[] => {
+  if (item.endsWith('ModelSelect')) {
+    return getMergedModelOptions(platform)
+  }
+  return settingPreset[item as SettingNames]?.optionList || []
+}
+
 const getCustomModelsKey = (platform: string): SettingNames | null => {
   const key = `${platform}CustomModels` as SettingNames
   return settingPreset[key] ? key : null
 }
 
 const loadCustomModels = () => {
-  const platforms = ['official', 'gemini', 'ollama', 'groq']
+  const platforms = ['official', 'gemini', 'ollama', 'groq', 'openaiCompatible']
   platforms.forEach(platform => {
     const key = getCustomModelsKey(platform)
     if (key && settingPreset[key].getFunc) {
@@ -593,6 +602,11 @@ const addCustomModel = (platform: string) => {
     customModelsMap.value[platform].push(model)
     ;(settingPreset[key] as any).saveFunc(customModelsMap.value[platform])
     newCustomModel.value[platform] = ''
+    // Auto-select the newly added model
+    const selectKey = `${platform}ModelSelect` as SettingNames
+    if (settingPreset[selectKey]) {
+      ;(settingForm.value as any)[selectKey] = model
+    }
   }
 }
 

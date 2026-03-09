@@ -44,6 +44,15 @@ export const localStorageKey = {
   groqModel: 'groqModel',
   groqCustomModel: 'groqCustomModel',
   groqCustomModels: 'groqCustomModels',
+  // openai-compatible api
+  openaiCompatibleAPIKey: 'openaiCompatibleAPIKey',
+  openaiCompatibleBasePath: 'openaiCompatibleBasePath',
+  openaiCompatibleModel: 'openaiCompatibleModel',
+  openaiCompatibleCustomModel: 'openaiCompatibleCustomModel',
+  openaiCompatibleCustomModels: 'openaiCompatibleCustomModels',
+  openaiCompatibleTemperature: 'openaiCompatibleTemperature',
+  openaiCompatibleMaxTokens: 'openaiCompatibleMaxTokens',
+  openaiCompatibleStreaming: 'openaiCompatibleStreaming',
   // proxy
   enableProxy: 'enableProxy',
   proxy: 'proxy',

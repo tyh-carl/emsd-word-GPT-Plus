@@ -16,8 +16,8 @@
       <!-- Header -->
       <div class="flex justify-between rounded-sm p-1">
         <div class="flex flex-1 items-center gap-2 text-accent">
-          <Sparkles :size="18" />
-          <span class="text-sm font-semibold text-main">Word GPT+</span>
+          <img src="@/assets/images/splash.png" class="h-5 object-contain" alt="EMSD" />
+          <span class="text-sm font-semibold text-main">{{ t('appName') }}</span>
         </div>
         <div class="flex items-center gap-1 rounded-md border border-accent/10">
           <CustomButton
@@ -88,7 +88,7 @@
           v-if="history.length === 0"
           class="flex h-full flex-col items-center justify-center gap-4 p-8 text-center text-accent"
         >
-          <Sparkles :size="32" />
+          <img src="@/assets/images/splash.png" class="h-15 object-contain" alt="EMSD" />
           <p class="font-semibold text-main">
             {{ $t('emptyTitle') }}
           </p>
@@ -111,7 +111,7 @@
             >
               <template v-for="(segment, idx) in renderSegments(msg)" :key="idx">
                 <span v-if="segment.type === 'text'">{{ segment.text.trim() }}</span>
-                <details v-else class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary">
+                <details v-else-if="segment.type === 'think'" class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary">
                   <summary class="cursor-pointer list-none p-1 text-sm font-semibold text-secondary">
                     Thought process
                   </summary>
@@ -119,7 +119,27 @@
                     segment.text.trim()
                   }}</pre>
                 </details>
+                <details v-else-if="segment.type === 'tool'" class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary">
+                  <summary class="cursor-pointer list-none p-1 text-sm font-semibold text-secondary">
+                    🔧 {{ t('toolCallsUsed') }}
+                  </summary>
+                  <pre class="m-0 p-1 text-xs wrap-break-word whitespace-pre-wrap text-secondary">{{
+                    segment.text.trim()
+                  }}</pre>
+                </details>
               </template>
+            </div>
+            <div v-if="!(msg instanceof AIMessage) && index === lastHumanMessageIndex" class="flex gap-1">
+              <CustomButton
+                :title="t('regenerate')"
+                text=""
+                :icon="RefreshCw"
+                type="secondary"
+                class="bg-surface! p-1.5! text-secondary!"
+                :icon-size="12"
+                :disabled="loading"
+                @click="regenerateFrom(index)"
+              />
             </div>
             <div v-if="msg instanceof AIMessage" class="flex gap-1">
               <CustomButton
@@ -195,21 +215,33 @@
             </select>
           </div>
         </div>
+        <!-- Drag handle -->
         <div
-          class="flex min-w-12 items-center gap-2 rounded-md border border-border bg-surface p-2 focus-within:border-accent"
+          class="flex h-2 cursor-row-resize items-center justify-center"
+          :class="{ 'opacity-100': isDragging, 'opacity-40 hover:opacity-80': !isDragging }"
+          @pointerdown="onDragStart"
+        >
+          <div class="h-0.5 w-8 rounded-full bg-border transition-opacity" />
+        </div>
+        <div
+          class="flex min-w-12 items-start gap-2 overflow-hidden rounded-md border border-border bg-surface p-2 focus-within:border-accent"
+          :class="{ '!bg-gray-200 opacity-50': loading }"
+          :style="{ height: containerHeight + 'px' }"
+          @click="inputTextarea?.focus()"
         >
           <textarea
             ref="inputTextarea"
             v-model="userInput"
-            class="placeholder::text-secondary block max-h-30 flex-1 resize-none overflow-y-auto border-none bg-transparent py-2 text-xs leading-normal text-main outline-none placeholder:text-xs"
+            class="placeholder::text-secondary block flex-1 resize-none overflow-y-auto border-none bg-transparent py-2 text-xs leading-normal text-main outline-none placeholder:text-xs disabled:cursor-not-allowed"
             :placeholder="mode === 'ask' ? $t('askAnything') : $t('directTheAgent')"
+            :disabled="loading"
             rows="1"
             @keydown.enter.exact.prevent="sendMessage"
             @input="adjustTextareaHeight"
           />
           <button
             v-if="loading"
-            class="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-danger text-white"
+            class="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center self-end rounded-sm border-none bg-danger text-white"
             title="Stop"
             @click="stopGeneration"
           >
@@ -217,7 +249,7 @@
           </button>
           <button
             v-else
-            class="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-sm border-none bg-accent text-white disabled:cursor-not-allowed disabled:bg-accent/50"
+            class="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center self-end rounded-sm border-none bg-accent text-white disabled:cursor-not-allowed disabled:bg-accent/50"
             title="Send"
             :disabled="!userInput.trim()"
             @click="sendMessage"
@@ -241,7 +273,7 @@
 </template>
 
 <script lang="ts" setup>
-import { AIMessage, HumanMessage, Message, SystemMessage } from '@langchain/core/messages'
+import { AIMessage, HumanMessage, type Message, SystemMessage } from '@langchain/core/messages'
 import { useStorage } from '@vueuse/core'
 import {
   BookOpen,
@@ -254,10 +286,10 @@ import {
   History,
   MessageSquare,
   Plus,
+  RefreshCw,
   Send,
   Settings,
   Sparkle,
-  Sparkles,
   Square,
 } from 'lucide-vue-next'
 import { v4 as uuidv4 } from 'uuid'
@@ -267,18 +299,17 @@ import { useRouter } from 'vue-router'
 
 import { type CheckpointTuple, IndexedDBSaver } from '@/api/checkpoints'
 import { insertFormattedResult, insertResult } from '@/api/common'
-import { getAgentResponse, getChatResponse } from '@/api/union'
 import CustomButton from '@/components/CustomButton.vue'
 import SingleSelect from '@/components/SingleSelect.vue'
+import { useChat } from '@/composables/useChat'
+import { useResizableTextarea } from '@/composables/useResizableTextarea'
 import CheckPointsPage from '@/pages/checkPointsPage.vue'
 import { checkAuth } from '@/utils/common'
 import { buildInPrompt, getBuiltInPrompt } from '@/utils/constant'
 import { localStorageKey } from '@/utils/enum'
-import { createGeneralTools, GeneralToolName } from '@/utils/generalTools'
 import { message as messageUtil } from '@/utils/message'
 import useSettingForm from '@/utils/settingForm'
 import { settingPreset } from '@/utils/settingPreset'
-import { createWordTools, WordToolName } from '@/utils/wordTools'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -295,70 +326,6 @@ interface SavedPrompt {
 const savedPrompts = ref<SavedPrompt[]>([])
 const selectedPromptId = ref<string>('')
 const customSystemPrompt = ref<string>('')
-
-const allWordToolNames: WordToolName[] = [
-  'getSelectedText',
-  'getDocumentContent',
-  'insertText',
-  'replaceSelectedText',
-  'appendText',
-  'insertParagraph',
-  'formatText',
-  'searchAndReplace',
-  'getDocumentProperties',
-  'insertTable',
-  'insertList',
-  'deleteText',
-  'clearFormatting',
-  'setFontName',
-  'insertPageBreak',
-  'getRangeInfo',
-  'selectText',
-  'insertImage',
-  'getTableInfo',
-  'insertBookmark',
-  'goToBookmark',
-  'insertContentControl',
-  'findText',
-]
-
-const allGeneralToolNames: GeneralToolName[] = ['fetchWebContent', 'searchWeb', 'getCurrentDate', 'calculateMath']
-
-// Tool state
-const enabledWordTools = ref<WordToolName[]>(loadEnabledWordTools())
-const enabledGeneralTools = ref<GeneralToolName[]>(loadEnabledGeneralTools())
-
-function loadEnabledWordTools(): WordToolName[] {
-  const stored = localStorage.getItem('enabledWordTools')
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored)
-      return parsed.filter((name: string) => allWordToolNames.includes(name as WordToolName))
-    } catch {
-      return [...allWordToolNames]
-    }
-  }
-  return [...allWordToolNames]
-}
-
-function loadEnabledGeneralTools(): GeneralToolName[] {
-  const stored = localStorage.getItem('enabledGeneralTools')
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored)
-      return parsed.filter((name: string) => allGeneralToolNames.includes(name as GeneralToolName))
-    } catch {
-      return [...allGeneralToolNames]
-    }
-  }
-  return [...allGeneralToolNames]
-}
-
-function getActiveTools() {
-  const wordTools = createWordTools(enabledWordTools.value)
-  const generalTools = createGeneralTools(enabledGeneralTools.value)
-  return [...generalTools, ...wordTools]
-}
 
 function loadSavedPrompts() {
   const stored = localStorage.getItem('savedPrompts')
@@ -392,26 +359,49 @@ function loadSelectedPrompt() {
 
 // Chat state
 const mode = useStorage(localStorageKey.chatMode, 'ask' as 'ask' | 'agent')
-const history = ref<Message[]>([])
 const userInput = ref('')
-const loading = ref(false)
 const messagesContainer = ref<HTMLElement>()
 const inputTextarea = ref<HTMLTextAreaElement>()
-const abortController = ref<AbortController | null>(null)
-const threadId = useStorage(localStorageKey.threadId, uuidv4())
 const showCheckpoints = ref(false)
 const saver = new IndexedDBSaver()
-const currentCheckpointId = ref<string>('')
 
 // Settings
 const useWordFormatting = useStorage(localStorageKey.useWordFormatting, true)
 const useSelectedText = useStorage(localStorageKey.useSelectedText, true)
 const insertType = ref<insertTypes>('replace')
 
-const errorIssue = ref<boolean | string | null>(false)
+const { containerHeight, isDragging, onDragStart } = useResizableTextarea()
+
+const {
+  history,
+  loading,
+  abortController,
+  threadId,
+  currentCheckpointId,
+  processChat,
+  stopGeneration,
+  getMessageText,
+} = useChat({
+  settingForm,
+  mode,
+  customSystemPrompt,
+  onScrollToBottom: () => scrollToBottom(),
+})
 
 const displayHistory = computed(() => {
-  return history.value.filter(msg => !(msg instanceof SystemMessage))
+  return history.value.filter(msg => {
+    if (msg instanceof SystemMessage) return false
+    if (msg instanceof AIMessage && (msg as any).tool_calls?.length > 0) return false
+    return true
+  })
+})
+
+const lastHumanMessageIndex = computed(() => {
+  const arr = displayHistory.value
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (!(arr[i] instanceof AIMessage)) return i
+  }
+  return -1
 })
 
 // Quick actions
@@ -464,6 +454,10 @@ const currentModelOptions = computed(() => {
       presetOptions = settingPreset.groqModelSelect.optionList || []
       customModels = getCustomModels('groqCustomModels', 'groqCustomModel')
       break
+    case 'openaiCompatible':
+      presetOptions = settingPreset.openaiCompatibleModelSelect.optionList || []
+      customModels = getCustomModels('openaiCompatibleCustomModels', 'openaiCompatibleModel')
+      break
     case 'azure':
       return []
     default:
@@ -486,6 +480,8 @@ const currentModelSelect = computed({
         return settingForm.value.groqModelSelect
       case 'azure':
         return settingForm.value.azureDeploymentName
+      case 'openaiCompatible':
+        return settingForm.value.openaiCompatibleModelSelect
       default:
         return ''
     }
@@ -537,18 +533,11 @@ function startNewChat() {
   adjustTextareaHeight()
 }
 
-function stopGeneration() {
-  if (abortController.value) {
-    abortController.value.abort()
-    abortController.value = null
-  }
-  loading.value = false
-}
-
 function adjustTextareaHeight() {
   if (inputTextarea.value) {
     inputTextarea.value.style.height = 'auto'
-    inputTextarea.value.style.height = Math.min(inputTextarea.value.scrollHeight, 120) + 'px'
+    const maxH = Math.max(containerHeight.value - 16, 40) // 16px accounts for container p-2 padding
+    inputTextarea.value.style.height = Math.min(inputTextarea.value.scrollHeight, maxH) + 'px'
   }
 }
 
@@ -583,13 +572,42 @@ async function sendMessage() {
     selectedText ? `${userMessage}\n\n[Selected text: "${selectedText}"]` : userMessage,
   )
 
-  scrollToBottom()
-
   loading.value = true
   abortController.value = new AbortController()
 
   try {
     await processChat(fullMessage, undefined)
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      messageUtil.info(t('generationStop'))
+    } else {
+      console.error(error)
+      messageUtil.error(t('failedToResponse'))
+      history.value.pop()
+    }
+  } finally {
+    loading.value = false
+    abortController.value = null
+  }
+}
+
+async function regenerateFrom(index: number) {
+  if (loading.value) return
+
+  const msg = displayHistory.value[index]
+  const msgText = getMessageText(msg)
+  const historyIndex = history.value.indexOf(msg)
+
+  // Truncate history back to just before this human message
+  history.value = history.value.slice(0, historyIndex)
+  // Reset threadId so LangGraph starts a fresh checkpoint instead of
+  // appending onto the old one (which still has the full original history)
+  threadId.value = uuidv4()
+
+  loading.value = true
+  abortController.value = new AbortController()
+  try {
+    await processChat(new HumanMessage(msgText), undefined)
   } catch (error: any) {
     if (error.name === 'AbortError') {
       messageUtil.info(t('generationStop'))
@@ -628,8 +646,6 @@ async function applyQuickAction(actionKey: keyof typeof buildInPrompt) {
   const systemMessage = action.system(lang)
   const userMessage = new HumanMessage(action.user(selectedText, lang))
 
-  scrollToBottom()
-
   loading.value = true
   abortController.value = new AbortController()
 
@@ -648,163 +664,6 @@ async function applyQuickAction(actionKey: keyof typeof buildInPrompt) {
     loading.value = false
     abortController.value = null
   }
-}
-
-const agentPrompt = (lang: string) =>
-  `
-# Role
-You are a highly skilled Microsoft Word Expert Agent. Your goal is to assist users in creating, editing, and formatting documents with professional precision.
-
-# Capabilities
-- You can interact with the document directly using provided tools (reading text, applying styles, inserting content, etc.).
-- You understand document structure, typography, and professional writing standards.
-
-# Guidelines
-1. **Tool First**: If a request requires document modification or inspection or web search and fetch, prioritize using the available tools.
-2. **Accuracy**: Ensure formatting and content changes are precise and follow the user's intent.
-3. **Conciseness**: Provide brief, helpful explanations of your actions.
-4. **Language**: You must communicate entirely in ${lang}.
-
-# Safety
-Do not perform destructive actions (like clearing the whole document) unless explicitly instructed.
-`.trim()
-
-const standardPrompt = (lang: string) =>
-  `You are a helpful Microsoft Word specialist. Help users with drafting, brainstorming, and Word-related questions. Reply in ${lang}.`
-
-async function processChat(userMessage: HumanMessage, systemMessage?: string) {
-  const settings = settingForm.value
-  const { replyLanguage: lang, api: provider } = settings
-
-  const isAgentMode = mode.value === 'agent'
-
-  const finalSystemMessage =
-    customSystemPrompt.value || systemMessage || (isAgentMode ? agentPrompt(lang) : standardPrompt(lang))
-
-  const defaultSystemMessage = new SystemMessage(finalSystemMessage)
-
-  // Add user message to history
-  history.value.push(userMessage)
-
-  // Prepare messages for LLM (always include system message first, followed by all history)
-  const finalMessages = [defaultSystemMessage, ...history.value]
-  // Build provider configuration
-  const providerConfigs: Record<string, any> = {
-    official: {
-      provider: 'official',
-      config: {
-        apiKey: settings.officialAPIKey,
-        baseURL: settings.officialBasePath,
-        dangerouslyAllowBrowser: true,
-      },
-      maxTokens: settings.officialMaxTokens,
-      temperature: settings.officialTemperature,
-      model: settings.officialModelSelect,
-    },
-    groq: {
-      provider: 'groq',
-      groqAPIKey: settings.groqAPIKey,
-      groqModel: settings.groqModelSelect,
-      maxTokens: settings.groqMaxTokens,
-      temperature: settings.groqTemperature,
-    },
-    azure: {
-      provider: 'azure',
-      azureAPIKey: settings.azureAPIKey,
-      azureAPIEndpoint: settings.azureAPIEndpoint,
-      azureDeploymentName: settings.azureDeploymentName,
-      azureAPIVersion: settings.azureAPIVersion,
-      maxTokens: settings.azureMaxTokens,
-      temperature: settings.azureTemperature,
-    },
-    gemini: {
-      provider: 'gemini',
-      geminiAPIKey: settings.geminiAPIKey,
-      maxTokens: settings.geminiMaxTokens,
-      temperature: settings.geminiTemperature,
-      geminiModel: settings.geminiModelSelect,
-    },
-    ollama: {
-      provider: 'ollama',
-      ollamaEndpoint: settings.ollamaEndpoint,
-      ollamaModel: settings.ollamaModelSelect,
-      temperature: settings.ollamaTemperature,
-    },
-  }
-
-  const currentConfig = providerConfigs[provider]
-  if (!currentConfig) {
-    messageUtil.error(t('notSupportedProvider'))
-    return
-  }
-
-  history.value.push(new AIMessage(''))
-
-  // Use agent mode with tools if enabled
-  if (isAgentMode) {
-    const tools = getActiveTools()
-
-    await getAgentResponse({
-      ...currentConfig,
-      recursionLimit: settings.agentMaxIterations,
-      messages: finalMessages,
-      tools,
-      errorIssue,
-      loading,
-      abortSignal: abortController.value?.signal,
-      threadId: threadId.value,
-      checkpointId: currentCheckpointId.value,
-      onStream: (text: string) => {
-        const lastIndex = history.value.length - 1
-        history.value[lastIndex] = new AIMessage(text)
-        scrollToBottom()
-      },
-      onToolCall: (toolName: string, _args: any) => {
-        // Show tool call in UI
-        const lastIndex = history.value.length - 1
-        const currentContent = getMessageText(history.value[lastIndex])
-        history.value[lastIndex] = new AIMessage(currentContent + `\n\n🔧 Calling tool: ${toolName}...`)
-        scrollToBottom()
-      },
-      onToolResult: (toolName: string, _result: string) => {
-        // Update with tool result
-        const lastIndex = history.value.length - 1
-        const currentContent = getMessageText(history.value[lastIndex])
-        const updatedContent = currentContent.replace(
-          `🔧 Calling tool: ${toolName}...`,
-          `✅ Tool ${toolName} completed`,
-        )
-        history.value[lastIndex] = new AIMessage(updatedContent)
-        scrollToBottom()
-      },
-    })
-  } else {
-    await getChatResponse({
-      ...currentConfig,
-      messages: finalMessages,
-      errorIssue,
-      loading,
-      abortSignal: abortController.value?.signal,
-      threadId: threadId.value,
-      onStream: (text: string) => {
-        const lastIndex = history.value.length - 1
-        history.value[lastIndex] = new AIMessage(text)
-        scrollToBottom()
-      },
-    })
-  }
-
-  if (errorIssue.value) {
-    if (typeof errorIssue.value === 'string') {
-      messageUtil.error(t(errorIssue.value))
-    } else {
-      messageUtil.error(t('somethingWentWrong'))
-    }
-    errorIssue.value = null
-    return
-  }
-
-  scrollToBottom()
 }
 
 async function insertToDocument(content: string, type: insertTypes) {
@@ -839,74 +698,71 @@ function checkApiKey() {
 
 const THINK_TAG = '<think>'
 const THINK_TAG_END = '</think>'
+const TOOL_CALLS_TAG = '<tool_calls>'
+const TOOL_CALLS_TAG_END = '</tool_calls>'
 
 interface RenderSegment {
-  type: 'text' | 'think'
+  type: 'text' | 'think' | 'tool'
   text: string
-}
-
-const flattenContentArray = (content: any[]): string =>
-  content
-    .map((part: any) => {
-      if (typeof part === 'string') return part
-      if (part?.text && typeof part.text === 'string') return part.text
-      if (part?.data && typeof part.data === 'string') return part.data
-      return ''
-    })
-    .join('')
-
-const getMessageText = (msg: Message): string => {
-  const content: any = (msg as any).content
-  if (typeof content === 'string') return content
-  if (Array.isArray(content)) return flattenContentArray(content)
-  return ''
 }
 
 const cleanMessageText = (msg: Message): string => {
   const raw = getMessageText(msg)
-  const regex = new RegExp(`${THINK_TAG}[\\s\\S]*?${THINK_TAG_END}`, 'g')
-  return raw.replace(regex, '').trim()
+  return raw
+    .replace(new RegExp(`${THINK_TAG}[\\s\\S]*?${THINK_TAG_END}`, 'g'), '')
+    .replace(new RegExp(`${TOOL_CALLS_TAG}[\\s\\S]*?${TOOL_CALLS_TAG_END}`, 'g'), '')
+    .trim()
 }
 
-const splitThinkSegments = (text: string): RenderSegment[] => {
+const splitSegments = (text: string): RenderSegment[] => {
   if (!text) return []
+
+  const TAGS = [
+    { open: THINK_TAG, close: THINK_TAG_END, type: 'think' as const },
+    { open: TOOL_CALLS_TAG, close: TOOL_CALLS_TAG_END, type: 'tool' as const },
+  ]
 
   const segments: RenderSegment[] = []
   let cursor = 0
 
   while (cursor < text.length) {
-    const start = text.indexOf(THINK_TAG, cursor)
-    if (start === -1) {
+    // Find the nearest opening tag
+    let nearestStart = -1
+    let nearestTag = TAGS[0]
+    for (const tag of TAGS) {
+      const idx = text.indexOf(tag.open, cursor)
+      if (idx !== -1 && (nearestStart === -1 || idx < nearestStart)) {
+        nearestStart = idx
+        nearestTag = tag
+      }
+    }
+
+    if (nearestStart === -1) {
       segments.push({ type: 'text', text: text.slice(cursor) })
       break
     }
 
-    if (start > cursor) {
-      segments.push({ type: 'text', text: text.slice(cursor, start) })
+    if (nearestStart > cursor) {
+      segments.push({ type: 'text', text: text.slice(cursor, nearestStart) })
     }
 
-    const end = text.indexOf(THINK_TAG_END, start + THINK_TAG.length)
+    const contentStart = nearestStart + nearestTag.open.length
+    const end = text.indexOf(nearestTag.close, contentStart)
     if (end === -1) {
-      segments.push({
-        type: 'think',
-        text: text.slice(start + THINK_TAG.length),
-      })
+      segments.push({ type: nearestTag.type, text: text.slice(contentStart) })
       break
     }
 
-    segments.push({
-      type: 'think',
-      text: text.slice(start + THINK_TAG.length, end),
-    })
-    cursor = end + THINK_TAG_END.length
+    segments.push({ type: nearestTag.type, text: text.slice(contentStart, end) })
+    cursor = end + nearestTag.close.length
   }
 
-  return segments.filter(segment => segment.text)
+  return segments.filter(segment => segment.text.trim())
 }
 
 const renderSegments = (msg: Message): RenderSegment[] => {
   const raw = getMessageText(msg)
-  return splitThinkSegments(raw)
+  return splitSegments(raw)
 }
 
 const addWatch = () => {
@@ -922,10 +778,44 @@ const addWatch = () => {
       localStorage.setItem(localStorageKey.api, settingForm.value.api)
     },
   )
+  watch(
+    () => history.value.length,
+    () => scrollToBottom(),
+  )
 }
 
 async function initData() {
   insertType.value = (localStorage.getItem(localStorageKey.insertType) as insertTypes) || 'replace'
+}
+
+function reconstructMessages(rawMessages: any[]): Message[] {
+  const result: Message[] = []
+  let pendingToolNames: string[] = []
+
+  for (const msg of rawMessages) {
+    if (msg.type === 'human') {
+      pendingToolNames = []
+      result.push(new HumanMessage(msg.content))
+    } else if (msg.type === 'tool') {
+      if (msg.name) pendingToolNames.push(msg.name)
+    } else if (msg.type === 'ai') {
+      const hasToolCalls = msg.tool_calls && msg.tool_calls.length > 0
+      if (hasToolCalls) {
+        // Intermediate AI message — skip, kept in tool_calls for displayHistory filter
+        result.push(new AIMessage({ content: msg.content, tool_calls: msg.tool_calls }))
+      } else {
+        // Final AI message — prepend collected tool names as <tool_calls> block
+        let content = msg.content ?? ''
+        if (pendingToolNames.length > 0) {
+          content = '<tool_calls>' + pendingToolNames.join('\n') + '</tool_calls>\n\n' + content
+          pendingToolNames = []
+        }
+        result.push(new AIMessage({ content, tool_calls: [] }))
+      }
+    }
+  }
+
+  return result
 }
 
 async function handleRestore(checkpointId: string) {
@@ -940,11 +830,7 @@ async function handleRestore(checkpointId: string) {
   if (checkpointTuple) {
     const messages = checkpointTuple.checkpoint.channel_values.messages
     if (messages && Array.isArray(messages)) {
-      history.value = messages
-        .filter((msg: any) => ['human', 'ai'].includes(msg.type))
-        .map((msg: any) => {
-          return msg.type === 'human' ? new HumanMessage(msg.content) : new AIMessage(msg.content)
-        })
+      history.value = reconstructMessages(messages)
     }
   }
 }
@@ -964,13 +850,8 @@ async function loadThreadHistory(targetThreadId: string) {
 
     const latestCheckpoint = checkpoints[checkpoints.length - 1]
     const messages = latestCheckpoint.checkpoint.channel_values.messages
-    // TODO: 优化过滤策略
     if (messages && Array.isArray(messages)) {
-      history.value = messages
-        .filter((msg: any) => ['human', 'ai'].includes(msg.type))
-        .map((msg: any) => {
-          return msg.type === 'human' ? new HumanMessage(msg.content) : new AIMessage(msg.content)
-        })
+      history.value = reconstructMessages(messages)
       currentCheckpointId.value = latestCheckpoint.config.configurable?.checkpoint_id || ''
     } else {
       history.value = []

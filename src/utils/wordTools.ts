@@ -25,6 +25,12 @@ export type WordToolName =
   | 'goToBookmark'
   | 'insertContentControl'
   | 'findText'
+  | 'selectSpecificText'
+  | 'getDocumentStructure'
+  | 'setParagraphFormat'
+  | 'setListFormat'
+  | 'copyRangeOoxml'
+  | 'pasteOoxml'
 
 const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
   getSelectedText: {
@@ -127,13 +133,18 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
           type: 'string',
           description: 'The text to append',
         },
+        newPage: {
+          type: 'boolean',
+          description: 'Insert a page break before append the text',
+        },
       },
       required: ['text'],
     },
     execute: async args => {
-      const { text } = args
+      const { text, newPage = false } = args
       return Word.run(async context => {
         const body = context.document.body
+        if (newPage) body.insertBreak('Page', 'End')
         body.insertText(text, 'End')
         await context.sync()
         return 'Successfully appended text to document'
@@ -224,7 +235,7 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
         highlightColor: {
           type: 'string',
           description:
-            'Highlight color: Yellow, Green, Cyan, Pink, Blue, Red, DarkBlue, Teal, Lime, Purple, Orange, etc.',
+            'Highlight color: Yellow, Green, Cyan, Pink, Blue, Red, DarkBlue, Teal, Lime, Purple, Orange, etc. Pass "None" to remove highlight.',
         },
       },
       required: [],
@@ -239,8 +250,7 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
         if (underline !== undefined) range.font.underline = underline ? 'Single' : 'None'
         if (fontSize !== undefined) range.font.size = fontSize
         if (fontColor !== undefined) range.font.color = fontColor
-        if (highlightColor !== undefined) range.font.highlightColor = highlightColor
-
+        if (highlightColor !== undefined) range.font.highlightColor = highlightColor === 'None' ? null : highlightColor
         await context.sync()
         return 'Successfully applied formatting'
       })
@@ -377,7 +387,8 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
 
   insertList: {
     name: 'insertList',
-    description: 'Insert a bulleted or numbered list at the current position.',
+    description:
+      'Insert a bulleted or numbered list at the end of the document. Returns the list ID so you can attach more items later with setListFormat.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -388,32 +399,52 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
         },
         listType: {
           type: 'string',
-          description: 'Type of list: "bullet" or "number"',
+          description: 'Type of list: "bullet" for bulleted list, "number" for numbered list',
           enum: ['bullet', 'number'],
+        },
+        level: {
+          type: 'number',
+          description: 'List indentation level, 0-based (0 = top level, 1 = first sub-level). Default: 0',
         },
       },
       required: ['items', 'listType'],
     },
     execute: async args => {
-      const { items, listType } = args
+      const { items, listType, level = 0 } = args
       return Word.run(async context => {
-        const range = context.document.getSelection()
-        let insertionPoint = range
+        if (!items || items.length === 0) return 'No items provided'
 
-        for (const item of items) {
-          const paragraph = insertionPoint.insertParagraph(item, 'After')
+        const body = context.document.body
 
-          if (listType === 'bullet') {
-            paragraph.listItem.level = 0
-          } else {
-            paragraph.listItem.level = 0
-          }
+        // Insert first paragraph and start a real list
+        const firstParagraph = body.insertParagraph(items[0], 'End')
+        const list = firstParagraph.startNewList()
+        await context.sync()
 
-          insertionPoint = paragraph.getRange('End')
+        firstParagraph.listItem.level = level
+        list.load('id')
+        await context.sync()
+
+        const listId = list.id
+
+        // Apply the correct numbering or bullet style
+        if (listType === 'bullet') {
+          list.setLevelBullet(level, 'Solid')
+        } else {
+          list.setLevelNumbering(level, 'Arabic', [level, '.'])
+        }
+
+        // Insert remaining items attached to the same list
+        for (let i = 1; i < items.length; i++) {
+          const paragraph = body.insertParagraph(items[i], 'End')
+          paragraph.attachToList(listId, level)
         }
 
         await context.sync()
-        return `Successfully inserted ${listType} list with ${items.length} items`
+        return JSON.stringify({
+          message: `Inserted ${listType} list with ${items.length} item(s) at level ${level}`,
+          listId,
+        })
       })
     },
   },
@@ -828,6 +859,317 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
           null,
           2,
         )
+      })
+    },
+  },
+
+  selectSpecificText: {
+    name: 'selectSpecificText',
+    description:
+      'Search for specific text in the document and select it. Useful for selecting particular words or phrases before applying formatting, replacement, or other operations.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: {
+          type: 'string',
+          description: 'The text to search for and select',
+        },
+        occurrence: {
+          type: 'number',
+          description: 'Which occurrence to select (1-based). Default: 1 (first match)',
+        },
+        matchCase: {
+          type: 'boolean',
+          description: 'Whether to match case (default: false)',
+        },
+        matchWholeWord: {
+          type: 'boolean',
+          description: 'Whether to match whole word only (default: false)',
+        },
+      },
+      required: ['text'],
+    },
+    execute: async args => {
+      const { text, occurrence = 1, matchCase = false, matchWholeWord = false } = args
+      return Word.run(async context => {
+        const body = context.document.body
+        const searchResults = body.search(text, { matchCase, matchWholeWord })
+        searchResults.load('items')
+        await context.sync()
+
+        const count = searchResults.items.length
+        if (count === 0) {
+          return `Text "${text}" not found in document`
+        }
+
+        const index = Math.max(0, Math.min(occurrence - 1, count - 1))
+        searchResults.items[index].select()
+        await context.sync()
+
+        return `Selected occurrence ${index + 1} of ${count} for "${text}"`
+      })
+    },
+  },
+
+  setListFormat: {
+    name: 'setListFormat',
+    description:
+      'Apply list formatting to the currently selected paragraph(s). Can start a new list or attach to an existing one. ' +
+      'Typical workflow: insertParagraph → selectSpecificText → setListFormat. ' +
+      'When continuing an existing list pass the listId returned by a previous insertList or setListFormat call.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        listType: {
+          type: 'string',
+          description: 'Type of list: "bullet" for bulleted, "number" for numbered',
+          enum: ['bullet', 'number'],
+        },
+        level: {
+          type: 'number',
+          description: 'List indentation level, 0-based (0 = top level). Default: 0',
+        },
+        listId: {
+          type: 'number',
+          description:
+            'ID of an existing list to attach the paragraph to. Omit (or leave undefined) to start a brand-new list.',
+        },
+      },
+      required: ['listType'],
+    },
+    execute: async args => {
+      const { listType, level = 0, listId } = args
+      return Word.run(async context => {
+        const range = context.document.getSelection()
+        const paragraphs = range.paragraphs
+        paragraphs.load('items')
+        await context.sync()
+
+        if (paragraphs.items.length === 0) return 'No paragraphs selected'
+
+        let activeListId: number | undefined = listId
+        let activeList: Word.List | null = null
+
+        for (let i = 0; i < paragraphs.items.length; i++) {
+          const paragraph = paragraphs.items[i]
+
+          if (activeListId !== undefined && activeListId !== null) {
+            // Attach to an existing list
+            paragraph.attachToList(activeListId, level)
+          } else {
+            // Start a new list from this paragraph
+            activeList = paragraph.startNewList()
+            await context.sync()
+
+            paragraph.listItem.level = level
+            activeList.load('id')
+            await context.sync()
+
+            activeListId = activeList.id
+
+            // Apply the list style on the new list
+            if (listType === 'bullet') {
+              activeList.setLevelBullet(level, 'Solid')
+            } else {
+              activeList.setLevelNumbering(level, 'Arabic', [level, '.'])
+            }
+          }
+        }
+
+        await context.sync()
+        return JSON.stringify({
+          message: `Applied ${listType} list formatting at level ${level} to ${paragraphs.items.length} paragraph(s)`,
+          listId: activeListId,
+        })
+      })
+    },
+  },
+
+  getDocumentStructure: {
+    name: 'getDocumentStructure',
+    description:
+      'Get the full document structure with rich formatting details for every paragraph: text content, Word style, alignment, font name/size/bold/italic/underline/color, indentation, line spacing, and whether it is a list item (with list level). Use this instead of getDocumentContent when you need to replicate or inspect formatting.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+    execute: async () => {
+      return Word.run(async context => {
+        const body = context.document.body
+        const paragraphs = body.paragraphs
+        paragraphs.load('items')
+        await context.sync()
+
+        for (const p of paragraphs.items) {
+          p.load([
+            'text',
+            'style',
+            'alignment',
+            'firstLineIndent',
+            'leftIndent',
+            'lineSpacing',
+            'spaceBefore',
+            'spaceAfter',
+            'isListItem',
+          ])
+          p.font.load(['name', 'size', 'bold', 'italic', 'underline', 'color'])
+        }
+        await context.sync()
+
+        // Second pass: load list level for list item paragraphs
+        for (const p of paragraphs.items) {
+          if (p.isListItem) {
+            p.listItem.load('level')
+          }
+        }
+        await context.sync()
+
+        const result = paragraphs.items.map((p, index) => {
+          const info: Record<string, any> = {
+            index,
+            text: p.text?.trim() ?? '',
+            style: p.style,
+            alignment: p.alignment,
+            leftIndent: p.leftIndent,
+            firstLineIndent: p.firstLineIndent,
+            lineSpacing: p.lineSpacing,
+            spaceBefore: p.spaceBefore,
+            spaceAfter: p.spaceAfter,
+            isListItem: p.isListItem,
+            font: {
+              name: p.font.name,
+              size: p.font.size,
+              bold: p.font.bold,
+              italic: p.font.italic,
+              underline: p.font.underline,
+              color: p.font.color,
+            },
+          }
+          if (p.isListItem) {
+            info.listLevel = p.listItem.level
+          }
+          return info
+        })
+
+        return JSON.stringify(result, null, 2)
+      })
+    },
+  },
+
+  copyRangeOoxml: {
+    name: 'copyRangeOoxml',
+    description:
+      'Read the currently selected range as raw OOXML (Office Open XML). ' +
+      'Returns a string of OOXML that preserves ALL formatting: mixed bold/italic runs, tables, images, ' +
+      'hyperlinks, numbering, etc. Store the returned string and pass it to pasteOoxml to replicate the content elsewhere. ' +
+      'This is the equivalent of Ctrl+C in Word.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+    execute: async () => {
+      return Word.run(async context => {
+        const range = context.document.getSelection()
+        const ooxml = range.getOoxml()
+        await context.sync()
+        return ooxml.value
+      })
+    },
+  },
+
+  pasteOoxml: {
+    name: 'pasteOoxml',
+    description:
+      'Insert raw OOXML (previously obtained from copyRangeOoxml) at the specified location. ' +
+      'Preserves ALL original formatting exactly — equivalent to Ctrl+V in Word. ' +
+      'Use location "End" to append after existing content, or "After"/"Before" relative to the current selection.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ooxml: {
+          type: 'string',
+          description: 'The raw OOXML string returned by copyRangeOoxml',
+        },
+        location: {
+          type: 'string',
+          description: 'Where to insert: "Before", "After", "Start", "End", or "Replace". Default: "End"',
+          enum: ['Before', 'After', 'Start', 'End', 'Replace'],
+        },
+      },
+      required: ['ooxml'],
+    },
+    execute: async args => {
+      const { ooxml, location = 'End' } = args
+      return Word.run(async context => {
+        if (location === 'Start' || location === 'End') {
+          const body = context.document.body
+          body.insertOoxml(ooxml, location as Word.InsertLocation)
+        } else {
+          const range = context.document.getSelection()
+          range.insertOoxml(ooxml, location as Word.InsertLocation)
+        }
+        await context.sync()
+        return `Successfully pasted OOXML content at ${location}`
+      })
+    },
+  },
+
+  setParagraphFormat: {
+    name: 'setParagraphFormat',
+    description:
+      'Set paragraph-level formatting on the currently selected paragraph(s): alignment (left/centered/right/justified), line spacing, space before/after paragraph, and left/first-line indentation. Select text first with selectSpecificText, then call this tool to apply the format.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        alignment: {
+          type: 'string',
+          description: 'Paragraph alignment',
+          enum: ['left', 'centered', 'right', 'justified'],
+        },
+        lineSpacing: {
+          type: 'number',
+          description: 'Line spacing in points (e.g. 12 for single-spaced at 12pt, 24 for double-spaced)',
+        },
+        spaceBefore: {
+          type: 'number',
+          description: 'Space before the paragraph in points',
+        },
+        spaceAfter: {
+          type: 'number',
+          description: 'Space after the paragraph in points',
+        },
+        leftIndent: {
+          type: 'number',
+          description: 'Left indentation in points',
+        },
+        firstLineIndent: {
+          type: 'number',
+          description: 'First-line indentation in points (use negative value for hanging indent)',
+        },
+      },
+      required: [],
+    },
+    execute: async args => {
+      const { alignment, lineSpacing, spaceBefore, spaceAfter, leftIndent, firstLineIndent } = args
+      return Word.run(async context => {
+        const range = context.document.getSelection()
+        const paragraphs = range.paragraphs
+        paragraphs.load('items')
+        await context.sync()
+
+        for (const p of paragraphs.items) {
+          if (alignment !== undefined) p.alignment = alignment as Word.Alignment
+          if (lineSpacing !== undefined) p.lineSpacing = lineSpacing
+          if (spaceBefore !== undefined) p.spaceBefore = spaceBefore
+          if (spaceAfter !== undefined) p.spaceAfter = spaceAfter
+          if (leftIndent !== undefined) p.leftIndent = leftIndent
+          if (firstLineIndent !== undefined) p.firstLineIndent = firstLineIndent
+        }
+        await context.sync()
+
+        return `Successfully applied paragraph formatting to ${paragraphs.items.length} paragraph(s)`
       })
     },
   },

@@ -1,7 +1,13 @@
 import { i18n } from '@/i18n'
 
 import { forceNumber, optionLists } from './common'
-import { availableModels, availableModelsForGemini, availableModelsForGroq, availableModelsForOllama } from './constant'
+import {
+  availableModels,
+  availableModelsForGemini,
+  availableModelsForGroq,
+  availableModelsForOllama,
+  availableModelsForOpenAICompatible,
+} from './constant'
 import { localStorageKey } from './enum'
 
 type componentType = 'input' | 'select' | 'inputNum'
@@ -71,6 +77,14 @@ export const Setting_Names = [
   'groqModelSelect',
   'groqCustomModel',
   'groqCustomModels',
+  'openaiCompatibleAPIKey',
+  'openaiCompatibleBasePath',
+  'openaiCompatibleCustomModel',
+  'openaiCompatibleCustomModels',
+  'openaiCompatibleModelSelect',
+  'openaiCompatibleTemperature',
+  'openaiCompatibleMaxTokens',
+  'openaiCompatibleStreaming',
   'systemPrompt',
   'userPrompt',
   'agentMaxIterations',
@@ -134,7 +148,7 @@ export const settingPreset = {
     type: 'select',
     optionObj: optionLists.localLanguageList,
     saveFunc: (value: string) => {
-      i18n.global.locale.value = value as 'en' | 'zh-cn'
+      i18n.global.locale.value = value as 'en' | 'zh-hk'
       localStorage.setItem(localStorageKey.localLanguage, value)
     },
   },
@@ -173,7 +187,15 @@ export const settingPreset = {
   groqModelSelect: selectSetting('qwen/qwen3-32b', 'groqModel', availableModelsForGroq),
   groqCustomModel: inputSetting(''),
   groqCustomModels: customModelsetting('groqCustomModels', 'groqCustomModel'),
+  openaiCompatibleAPIKey: inputSetting('', 'openaiCompatibleAPIKey'),
+  openaiCompatibleBasePath: inputSetting('', 'openaiCompatibleBasePath'),
+  openaiCompatibleCustomModel: inputSetting('', 'openaiCompatibleCustomModel'),
+  openaiCompatibleCustomModels: customModelsetting('openaiCompatibleCustomModels', 'openaiCompatibleCustomModel'),
+  openaiCompatibleModelSelect: selectSetting('', 'openaiCompatibleModel', availableModelsForOpenAICompatible),
+  openaiCompatibleTemperature: inputNumSetting(0.7, 'openaiCompatibleTemperature', 'temperature'),
+  openaiCompatibleMaxTokens: inputNumSetting(800, 'openaiCompatibleMaxTokens', 'maxTokens'),
+  openaiCompatibleStreaming: selectSetting('on', 'openaiCompatibleStreaming', ['on', 'off']),
   systemPrompt: inputSetting('', 'defaultSystemPrompt'),
   userPrompt: inputSetting('', 'defaultPrompt'),
-  agentMaxIterations: inputNumSetting(25, 'agentMaxIterations', 'maxTokens'),
+  agentMaxIterations: inputNumSetting(10000, 'agentMaxIterations', 'maxTokens'),
 } as const satisfies Record<SettingNames, ISettingOption<any>>

@@ -49,9 +49,23 @@ export interface AzureOptions extends BaseChatCompletionOptions {
   azureAPIVersion?: string
 }
 
-export type ProviderOptions = OpenAIOptions | OllamaOptions | GroqOptions | GeminiOptions | AzureOptions
+export interface OpenAICompatibleOptions extends BaseChatCompletionOptions {
+  provider: 'openaiCompatible'
+  model?: string
+  openaiCompatibleAPIKey?: string
+  openaiCompatibleBasePath: string
+  streaming?: boolean
+}
 
-type supportedProviders = 'official' | 'ollama' | 'groq' | 'gemini' | 'azure'
+export type ProviderOptions =
+  | OpenAIOptions
+  | OllamaOptions
+  | GroqOptions
+  | GeminiOptions
+  | AzureOptions
+  | OpenAICompatibleOptions
+
+type supportedProviders = 'official' | 'ollama' | 'groq' | 'gemini' | 'azure' | 'openaiCompatible'
 // Agent options with tools support
 export interface AgentOptions extends BaseChatCompletionOptions {
   provider: supportedProviders
@@ -77,4 +91,7 @@ export interface AgentOptions extends BaseChatCompletionOptions {
   azureAPIEndpoint?: string
   azureDeploymentName?: string
   azureAPIVersion?: string
+  openaiCompatibleAPIKey?: string
+  openaiCompatibleBasePath?: string
+  streaming?: boolean
 }

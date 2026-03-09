@@ -19,6 +19,8 @@ export function checkAuth(auth: Auth): boolean {
       return !!auth.groqAPIKey
     case 'ollama':
       return true
+    case 'openaiCompatible':
+      return true
     default:
       return false
   }
