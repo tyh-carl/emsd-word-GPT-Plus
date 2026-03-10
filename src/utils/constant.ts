@@ -7,7 +7,6 @@ export const languageMap: IStringKeyMap = {
   pt: 'Português',
   hi: 'हिन्दी',
   ar: 'العربية',
-  'zh-cn': '简体中文',
   'zh-hk': '繁體中文',
   ja: '日本語',
   ko: '한국어',

@@ -42,9 +42,7 @@ class SystemFirstChatOpenAI extends ChatOpenAI {
     if (systemMsgs.length <= 1 && (messages.length === 0 || messages[0]._getType() === 'system')) {
       normalized = messages // already valid — skip
     } else {
-      const merged = systemMsgs
-        .map(m => (typeof m.content === 'string' ? m.content : ''))
-        .join('\n\n')
+      const merged = systemMsgs.map(m => (typeof m.content === 'string' ? m.content : '')).join('\n\n')
       normalized = merged ? [new SystemMessage(merged), ...otherMsgs] : otherMsgs
     }
 
@@ -63,6 +61,7 @@ const ModelCreators: Record<string, (opts: any) => BaseChatModel> = {
       },
       temperature: opts.temperature ?? 0.7,
       maxTokens: opts.maxTokens ?? 800,
+      parallelToolCalls: true,
     })
   },
 
@@ -101,6 +100,7 @@ const ModelCreators: Record<string, (opts: any) => BaseChatModel> = {
       azureOpenAIEndpoint: opts.azureAPIEndpoint,
       azureOpenAIApiDeploymentName: opts.azureDeploymentName,
       azureOpenAIApiVersion: opts.azureAPIVersion ?? '2024-10-01',
+      parallelToolCalls: true,
     })
   },
 

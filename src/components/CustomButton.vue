@@ -2,7 +2,7 @@
   <button
     :disabled="disabled"
     class="group flex min-w-fit cursor-pointer items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all duration-fast ease-apple not-disabled:hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-    :class="classVar"
+    :class="[classVar, vertical ? 'flex-col gap-1' : '']"
     :title="title || undefined"
     :data-active="active"
     @click="emit('click')"
@@ -13,9 +13,9 @@
     <slot>
       <span
         v-if="text"
-        :class="textClassVar"
+        :class="[textClassVar, vertical ? 'text-xs leading-none' : 'text-sm leading-[1.4]']"
         :data-active="active"
-        class="[.primary] text-sm leading-[1.4] font-semibold text-secondary"
+        class="font-semibold text-secondary"
         >{{ text }}</span
       >
     </slot>
@@ -36,6 +36,7 @@ const {
   title = '',
   iconClass = '',
   textClass = '',
+  vertical = false,
 } = defineProps<{
   text: string
   icon?: any
@@ -46,6 +47,7 @@ const {
   title?: string
   iconClass?: string
   textClass?: string
+  vertical?: boolean
 }>()
 
 const textClassVar = computed(() => {

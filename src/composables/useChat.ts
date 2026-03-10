@@ -52,6 +52,7 @@ const allWordToolNames: WordToolName[] = [
   'setListFormat',
   'copyRangeOoxml',
   'pasteOoxml',
+  'insertFormattedParagraph',
 ]
 
 const allGeneralToolNames: GeneralToolName[] = ['fetchWebContent', 'searchWeb', 'getCurrentDate', 'calculateMath']
@@ -96,6 +97,7 @@ You are a highly skilled Microsoft Word Expert Agent. Your goal is to assist use
 2. **Accuracy**: Ensure formatting and content changes are precise and follow the user's intent.
 3. **Conciseness**: Provide brief, helpful explanations of your actions.
 4. **Language**: You must communicate entirely in ${lang}.
+5. **Efficiency**: When multiple independent tool actions are needed (e.g., formatting several paragraphs, inserting multiple items), call all of them in a single response rather than one at a time. Only sequence tool calls when one depends on another's result.
 
 # Safety
 Do not perform destructive actions (like clearing the whole document) unless explicitly instructed.

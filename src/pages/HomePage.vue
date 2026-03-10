@@ -50,35 +50,6 @@
         </div>
       </div>
 
-      <!-- Quick Actions Bar -->
-      <div class="flex w-full items-center justify-center gap-2 overflow-hidden rounded-md">
-        <CustomButton
-          v-for="action in quickActions"
-          :key="action.key"
-          :title="action.label"
-          text=""
-          :icon="action.icon"
-          type="secondary"
-          :icon-size="16"
-          class="shrink-0! bg-surface! p-1.5!"
-          :disabled="loading"
-          @click="applyQuickAction(action.key)"
-        />
-        <SingleSelect
-          v-model="selectedPromptId"
-          :key-list="savedPrompts.map(prompt => prompt.id)"
-          :placeholder="t('selectPrompt')"
-          title=""
-          :fronticon="false"
-          class="max-w-xs! flex-1! bg-surface! text-xs!"
-          @change="loadSelectedPrompt"
-        >
-          <template #item="{ item }">
-            {{ savedPrompts.find(prompt => prompt.id === item)?.name || item }}
-          </template>
-        </SingleSelect>
-      </div>
-
       <!-- Chat Messages Container -->
       <div
         ref="messagesContainer"
@@ -111,7 +82,10 @@
             >
               <template v-for="(segment, idx) in renderSegments(msg)" :key="idx">
                 <span v-if="segment.type === 'text'">{{ segment.text.trim() }}</span>
-                <details v-else-if="segment.type === 'think'" class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary">
+                <details
+                  v-else-if="segment.type === 'think'"
+                  class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary"
+                >
                   <summary class="cursor-pointer list-none p-1 text-sm font-semibold text-secondary">
                     Thought process
                   </summary>
@@ -119,7 +93,10 @@
                     segment.text.trim()
                   }}</pre>
                 </details>
-                <details v-else-if="segment.type === 'tool'" class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary">
+                <details
+                  v-else-if="segment.type === 'tool'"
+                  class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary"
+                >
                   <summary class="cursor-pointer list-none p-1 text-sm font-semibold text-secondary">
                     🔧 {{ t('toolCallsUsed') }}
                   </summary>
@@ -172,6 +149,36 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Quick Actions Bar -->
+      <div class="flex w-full items-center justify-center gap-2 overflow-hidden rounded-md">
+        <CustomButton
+          v-for="action in quickActions"
+          :key="action.key"
+          :title="action.label"
+          :text="action.label"
+          :icon="action.icon"
+          type="secondary"
+          :icon-size="16"
+          :vertical="true"
+          class="shrink-0! bg-surface! px-2! py-1.5!"
+          :disabled="loading"
+          @click="applyQuickAction(action.key)"
+        />
+        <!-- <SingleSelect
+          v-model="selectedPromptId"
+          :key-list="savedPrompts.map(prompt => prompt.id)"
+          :placeholder="t('selectPrompt')"
+          title=""
+          :fronticon="false"
+          class="max-w-xs! flex-1! bg-surface! text-xs!"
+          @change="loadSelectedPrompt"
+        >
+          <template #item="{ item }">
+            {{ savedPrompts.find(prompt => prompt.id === item)?.name || item }}
+          </template>
+        </SingleSelect> -->
       </div>
 
       <!-- Input Area -->
@@ -412,7 +419,7 @@ const quickActions: {
 }[] = [
   { key: 'translate', label: t('translate'), icon: Globe },
   { key: 'polish', label: t('polish'), icon: Sparkle },
-  { key: 'academic', label: t('academic'), icon: BookOpen },
+  // { key: 'academic', label: t('academic'), icon: BookOpen },
   { key: 'summary', label: t('summary'), icon: FileCheck },
   { key: 'grammar', label: t('grammar'), icon: CheckCircle },
 ]

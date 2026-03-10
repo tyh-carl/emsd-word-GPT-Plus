@@ -31,6 +31,7 @@ export type WordToolName =
   | 'setListFormat'
   | 'copyRangeOoxml'
   | 'pasteOoxml'
+  | 'insertFormattedParagraph'
 
 const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
   getSelectedText: {
@@ -1112,6 +1113,132 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
         }
         await context.sync()
         return `Successfully pasted OOXML content at ${location}`
+      })
+    },
+  },
+
+  insertFormattedParagraph: {
+    name: 'insertFormattedParagraph',
+    description:
+      'Insert a paragraph and apply font + paragraph formatting in a single Office.js round-trip. ' +
+      'Use this instead of the insertParagraph → selectSpecificText → formatText → setParagraphFormat chain ' +
+      'when you already know the target formatting. All formatting properties are optional.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: {
+          type: 'string',
+          description: 'The paragraph text to insert',
+        },
+        location: {
+          type: 'string',
+          description: 'Where to insert: "End" (default), "Start", "Before", or "After" cursor',
+          enum: ['End', 'Start', 'Before', 'After'],
+        },
+        style: {
+          type: 'string',
+          description: 'Optional Word built-in style: Normal, Heading1, Heading2, Heading3, Heading4, Quote, IntenseQuote, Title, Subtitle',
+          enum: ['Normal', 'Heading1', 'Heading2', 'Heading3', 'Heading4', 'Quote', 'IntenseQuote', 'Title', 'Subtitle'],
+        },
+        fontName: {
+          type: 'string',
+          description: 'Font family name (e.g. "Calibri", "Arial")',
+        },
+        fontSize: {
+          type: 'number',
+          description: 'Font size in points',
+        },
+        bold: {
+          type: 'boolean',
+          description: 'Bold text',
+        },
+        italic: {
+          type: 'boolean',
+          description: 'Italic text',
+        },
+        underline: {
+          type: 'boolean',
+          description: 'Underline text',
+        },
+        fontColor: {
+          type: 'string',
+          description: 'Font color as hex string (e.g. "#FF0000")',
+        },
+        alignment: {
+          type: 'string',
+          description: 'Paragraph alignment',
+          enum: ['left', 'centered', 'right', 'justified'],
+        },
+        lineSpacing: {
+          type: 'number',
+          description: 'Line spacing in points',
+        },
+        spaceBefore: {
+          type: 'number',
+          description: 'Space before paragraph in points',
+        },
+        spaceAfter: {
+          type: 'number',
+          description: 'Space after paragraph in points',
+        },
+        leftIndent: {
+          type: 'number',
+          description: 'Left indentation in points',
+        },
+        firstLineIndent: {
+          type: 'number',
+          description: 'First-line indentation in points (negative = hanging indent)',
+        },
+      },
+      required: ['text'],
+    },
+    execute: async args => {
+      const {
+        text,
+        location = 'End',
+        style,
+        fontName,
+        fontSize,
+        bold,
+        italic,
+        underline,
+        fontColor,
+        alignment,
+        lineSpacing,
+        spaceBefore,
+        spaceAfter,
+        leftIndent,
+        firstLineIndent,
+      } = args
+      return Word.run(async context => {
+        let paragraph: Word.Paragraph
+        if (location === 'Start' || location === 'End') {
+          paragraph = context.document.body.insertParagraph(text, location as Word.InsertLocation)
+        } else {
+          const range = context.document.getSelection()
+          paragraph = range.insertParagraph(text, location as 'Before' | 'After')
+        }
+
+        if (style) paragraph.styleBuiltIn = style as Word.BuiltInStyleName
+
+        // Font
+        if (fontName !== undefined) paragraph.font.name = fontName
+        if (fontSize !== undefined) paragraph.font.size = fontSize
+        if (bold !== undefined) paragraph.font.bold = bold
+        if (italic !== undefined) paragraph.font.italic = italic
+        if (underline !== undefined) paragraph.font.underline = underline ? 'Single' : 'None'
+        if (fontColor !== undefined) paragraph.font.color = fontColor
+
+        // Paragraph
+        if (alignment !== undefined) paragraph.alignment = alignment as Word.Alignment
+        if (lineSpacing !== undefined) paragraph.lineSpacing = lineSpacing
+        if (spaceBefore !== undefined) paragraph.spaceBefore = spaceBefore
+        if (spaceAfter !== undefined) paragraph.spaceAfter = spaceAfter
+        if (leftIndent !== undefined) paragraph.leftIndent = leftIndent
+        if (firstLineIndent !== undefined) paragraph.firstLineIndent = firstLineIndent
+
+        await context.sync()
+        return `Successfully inserted formatted paragraph at ${location}`
       })
     },
   },
