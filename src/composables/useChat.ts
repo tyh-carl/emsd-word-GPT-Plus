@@ -52,7 +52,7 @@ const allWordToolNames: WordToolName[] = [
   'setListFormat',
   'copyRangeOoxml',
   'pasteOoxml',
-  'insertFormattedParagraph',
+  'insertFormattedText',
 ]
 
 const allGeneralToolNames: GeneralToolName[] = ['fetchWebContent', 'searchWeb', 'getCurrentDate', 'calculateMath']
