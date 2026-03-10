@@ -52,7 +52,7 @@ const allWordToolNames: WordToolName[] = [
   'setListFormat',
   'copyRangeOoxml',
   'pasteOoxml',
-  'insertFormattedText',
+  'insertFormattedParagraph',
 ]
 
 const allGeneralToolNames: GeneralToolName[] = ['fetchWebContent', 'searchWeb', 'getCurrentDate', 'calculateMath']
@@ -247,8 +247,7 @@ export function useChat(options: UseChatOptions) {
         onStream: (text: string) => {
           const lastIndex = history.value.length - 1
           if (toolCallLog.value.length > 0) {
-            const toolSection =
-              '<tool_calls>' + toolCallLog.value.join('\n') + '</tool_calls>'
+            const toolSection = '<tool_calls>' + toolCallLog.value.join('\n') + '</tool_calls>'
             history.value[lastIndex] = new AIMessage(toolSection + '\n\n' + text)
           } else {
             history.value[lastIndex] = new AIMessage(text)
@@ -290,15 +289,11 @@ export function useChat(options: UseChatOptions) {
     }
 
     if (errorIssue.value) {
-      const errorMsg = typeof errorIssue.value === 'string'
-        ? t(errorIssue.value)
-        : t('somethingWentWrong')
+      const errorMsg = typeof errorIssue.value === 'string' ? t(errorIssue.value) : t('somethingWentWrong')
       messageUtil.error(errorMsg)
       const lastIndex = history.value.length - 1
       const lastContent = getMessageText(history.value[lastIndex])
-      history.value[lastIndex] = new AIMessage(
-        (lastContent ? lastContent + '\n\n' : '') + `⚠️ ${errorMsg}`
-      )
+      history.value[lastIndex] = new AIMessage((lastContent ? lastContent + '\n\n' : '') + `⚠️ ${errorMsg}`)
       errorIssue.value = null
       return
     }
