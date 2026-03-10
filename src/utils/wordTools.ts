@@ -31,7 +31,7 @@ export type WordToolName =
   | 'setListFormat'
   | 'copyRangeOoxml'
   | 'pasteOoxml'
-  | 'insertFormattedParagraph'
+  | 'insertFormattedText'
 
 const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
   getSelectedText: {
@@ -1117,23 +1117,23 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
     },
   },
 
-  insertFormattedParagraph: {
-    name: 'insertFormattedParagraph',
+  insertFormattedText: {
+    name: 'insertFormattedText',
     description:
-      'Insert a paragraph and apply font + paragraph formatting in a single Office.js round-trip. ' +
-      'Use this instead of the insertParagraph → selectSpecificText → formatText → setParagraphFormat chain ' +
-      'when you already know the target formatting. All formatting properties are optional.',
+      'Insert formatted text at the end of the document using insertHtml. ' +
+      'By default the text is appended inline (no trailing newline). ' +
+      'Set newLine to true to add a paragraph break after the text. ' +
+      'All formatting properties are optional — unset properties inherit the current style.',
     inputSchema: {
       type: 'object',
       properties: {
         text: {
           type: 'string',
-          description: 'The paragraph text to insert',
+          description: 'The text to insert',
         },
-        location: {
-          type: 'string',
-          description: 'Where to insert: "End" (default), "Start", "Before", or "After" cursor',
-          enum: ['End', 'Start', 'Before', 'After'],
+        newLine: {
+          type: 'boolean',
+          description: 'If true, insert a paragraph break after the text (default: false)',
         },
         style: {
           type: 'string',
@@ -1195,7 +1195,7 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
     execute: async args => {
       const {
         text,
-        location = 'End',
+        newLine = false,
         style,
         fontName,
         fontSize,
@@ -1211,34 +1211,44 @@ const wordToolDefinitions: Record<WordToolName, WordToolDefinition> = {
         firstLineIndent,
       } = args
       return Word.run(async context => {
-        let paragraph: Word.Paragraph
-        if (location === 'Start' || location === 'End') {
-          paragraph = context.document.body.insertParagraph(text, location as Word.InsertLocation)
-        } else {
-          const range = context.document.getSelection()
-          paragraph = range.insertParagraph(text, location as 'Before' | 'After')
+        // Build inline CSS for the <span>
+        const spanStyles: string[] = []
+        if (fontName !== undefined) spanStyles.push(`font-family: '${fontName}'`)
+        if (fontSize !== undefined) spanStyles.push(`font-size: ${fontSize}pt`)
+        if (bold) spanStyles.push('font-weight: bold')
+        if (italic) spanStyles.push('font-style: italic')
+        if (underline) spanStyles.push('text-decoration: underline')
+        if (fontColor !== undefined) spanStyles.push(`color: ${fontColor}`)
+
+        // Build paragraph-level CSS
+        const pStyles: string[] = []
+        if (alignment !== undefined) pStyles.push(`text-align: ${alignment}`)
+        if (lineSpacing !== undefined) pStyles.push(`line-height: ${lineSpacing}pt`)
+        if (spaceBefore !== undefined) pStyles.push(`margin-top: ${spaceBefore}pt`)
+        if (spaceAfter !== undefined) pStyles.push(`margin-bottom: ${spaceAfter}pt`)
+        if (leftIndent !== undefined) pStyles.push(`margin-left: ${leftIndent}pt`)
+        if (firstLineIndent !== undefined) pStyles.push(`text-indent: ${firstLineIndent}pt`)
+
+        const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        const spanAttr = spanStyles.length ? ` style="${spanStyles.join('; ')}"` : ''
+        const pAttr = pStyles.length ? ` style="${pStyles.join('; ')}"` : ''
+
+        const html = newLine
+          ? `<p${pAttr}><span${spanAttr}>${escapedText}</span></p>`
+          : `<span${spanAttr}>${escapedText}</span>`
+
+        const body = context.document.body
+        body.insertHtml(html, 'End')
+
+        // Apply Word built-in style if specified (HTML can't set Word styles)
+        if (style) {
+          await context.sync()
+          const lastParagraph = body.paragraphs.getLast()
+          lastParagraph.styleBuiltIn = style as Word.BuiltInStyleName
         }
 
-        if (style) paragraph.styleBuiltIn = style as Word.BuiltInStyleName
-
-        // Font
-        if (fontName !== undefined) paragraph.font.name = fontName
-        if (fontSize !== undefined) paragraph.font.size = fontSize
-        if (bold !== undefined) paragraph.font.bold = bold
-        if (italic !== undefined) paragraph.font.italic = italic
-        if (underline !== undefined) paragraph.font.underline = underline ? 'Single' : 'None'
-        if (fontColor !== undefined) paragraph.font.color = fontColor
-
-        // Paragraph
-        if (alignment !== undefined) paragraph.alignment = alignment as Word.Alignment
-        if (lineSpacing !== undefined) paragraph.lineSpacing = lineSpacing
-        if (spaceBefore !== undefined) paragraph.spaceBefore = spaceBefore
-        if (spaceAfter !== undefined) paragraph.spaceAfter = spaceAfter
-        if (leftIndent !== undefined) paragraph.leftIndent = leftIndent
-        if (firstLineIndent !== undefined) paragraph.firstLineIndent = firstLineIndent
-
         await context.sync()
-        return `Successfully inserted formatted paragraph at ${location}`
+        return `Successfully inserted formatted text${newLine ? ' with paragraph break' : ''}`
       })
     },
   },
