@@ -112,8 +112,8 @@
                 text=""
                 :icon="RefreshCw"
                 type="secondary"
-                class="bg-surface! p-1.5! text-secondary!"
-                :icon-size="12"
+                class="mx-1 bg-surface! p-2! text-secondary!"
+                :icon-size="20"
                 :disabled="loading"
                 @click="regenerateFrom(index)"
               />
@@ -124,8 +124,8 @@
                 text=""
                 :icon="FileText"
                 type="secondary"
-                class="bg-surface! p-1.5! text-secondary!"
-                :icon-size="12"
+                class="mx-1 bg-surface! p-2! text-secondary!"
+                :icon-size="20"
                 @click="insertToDocument(cleanMessageText(msg), 'replace')"
               />
               <CustomButton
@@ -133,8 +133,8 @@
                 text=""
                 :icon="Plus"
                 type="secondary"
-                class="bg-surface! p-1.5! text-secondary!"
-                :icon-size="12"
+                class="mx-1 bg-surface! p-2! text-secondary!"
+                :icon-size="20"
                 @click="insertToDocument(cleanMessageText(msg), 'append')"
               />
               <CustomButton
@@ -142,8 +142,8 @@
                 text=""
                 :icon="Copy"
                 type="secondary"
-                class="bg-surface! p-1.5! text-secondary!"
-                :icon-size="12"
+                class="mx-1 bg-surface! p-2! text-secondary!"
+                :icon-size="20"
                 @click="copyToClipboard(cleanMessageText(msg))"
               />
             </div>
@@ -152,33 +152,34 @@
       </div>
 
       <!-- Quick Actions Bar -->
-      <div class="flex w-full items-center justify-center gap-2 overflow-hidden rounded-md">
-        <CustomButton
-          v-for="action in quickActions"
-          :key="action.key"
-          :title="action.label"
-          :text="action.label"
-          :icon="action.icon"
-          type="secondary"
-          :icon-size="16"
-          :vertical="true"
-          class="shrink-0! bg-surface! px-2! py-1.5!"
-          :disabled="loading"
-          @click="applyQuickAction(action.key)"
-        />
-        <!-- <SingleSelect
-          v-model="selectedPromptId"
-          :key-list="savedPrompts.map(prompt => prompt.id)"
-          :placeholder="t('selectPrompt')"
-          title=""
-          :fronticon="false"
-          class="max-w-xs! flex-1! bg-surface! text-xs!"
-          @change="loadSelectedPrompt"
-        >
-          <template #item="{ item }">
-            {{ savedPrompts.find(prompt => prompt.id === item)?.name || item }}
-          </template>
-        </SingleSelect> -->
+      <div class="flex w-full items-center justify-between gap-2 overflow-hidden rounded-md">
+        <div class="flex flex-row gap-x-4">
+          <CustomButton
+            v-for="action in quickActions"
+            :key="action.key"
+            :title="action.label"
+            :text="action.label"
+            :icon="action.icon"
+            type="secondary"
+            :icon-size="16"
+            :vertical="true"
+            class="shrink-0! bg-surface! px-2! py-1.5!"
+            :disabled="loading"
+            @click="applyQuickAction(action.key)"
+          />
+        </div>
+        <div class="flex w-50 flex-col items-stretch">
+          <SingleSelect
+            v-model="settingForm.replyLanguage"
+            :key-list="replyLanguageKeys"
+            :placeholder="settingForm.replyLanguage"
+            title=""
+            :fronticon="false"
+            :custom-front-icon="Globe"
+            :tight="true"
+            class="max-w-100! shrink-0! [&_button]:bg-white! [&_span]:text-lg!"
+          />
+        </div>
       </div>
 
       <!-- Input Area -->
@@ -312,7 +313,8 @@ import { useChat } from '@/composables/useChat'
 import { useResizableTextarea } from '@/composables/useResizableTextarea'
 import CheckPointsPage from '@/pages/checkPointsPage.vue'
 import { checkAuth } from '@/utils/common'
-import { buildInPrompt, getBuiltInPrompt } from '@/utils/constant'
+import { buildInPrompt, getBuiltInPrompt, languageMap } from '@/utils/constant'
+import log from '@/utils/logger'
 import { localStorageKey } from '@/utils/enum'
 import { message as messageUtil } from '@/utils/message'
 import useSettingForm from '@/utils/settingForm'
@@ -340,7 +342,7 @@ function loadSavedPrompts() {
     try {
       savedPrompts.value = JSON.parse(stored)
     } catch (error) {
-      console.error('Error loading saved prompts:', error)
+      log.error('Error loading saved prompts:', error)
       savedPrompts.value = []
     }
   }
@@ -410,6 +412,8 @@ const lastHumanMessageIndex = computed(() => {
   }
   return -1
 })
+
+const replyLanguageKeys = Object.values(languageMap)
 
 // Quick actions
 const quickActions: {
@@ -588,7 +592,7 @@ async function sendMessage() {
     if (error.name === 'AbortError') {
       messageUtil.info(t('generationStop'))
     } else {
-      console.error(error)
+      log.error(error)
       messageUtil.error(t('failedToResponse'))
       history.value.pop()
     }
@@ -619,7 +623,7 @@ async function regenerateFrom(index: number) {
     if (error.name === 'AbortError') {
       messageUtil.info(t('generationStop'))
     } else {
-      console.error(error)
+      log.error(error)
       messageUtil.error(t('failedToResponse'))
       history.value.pop()
     }
@@ -648,6 +652,7 @@ async function applyQuickAction(actionKey: keyof typeof buildInPrompt) {
   const builtInPrompts = getBuiltInPrompt()
   const action = builtInPrompts[actionKey]
   const settings = settingForm.value
+  log.debug(settings)
   const { replyLanguage: lang } = settings
 
   const systemMessage = action.system(lang)
@@ -662,7 +667,7 @@ async function applyQuickAction(actionKey: keyof typeof buildInPrompt) {
     if (error.name === 'AbortError') {
       messageUtil.info(t('generationStop'))
     } else {
-      console.error(error)
+      log.error(error)
       messageUtil.error(t('failedToProcessAction'))
       // Remove failed message
       history.value.pop()
@@ -715,14 +720,30 @@ interface RenderSegment {
 
 const cleanMessageText = (msg: Message): string => {
   const raw = getMessageText(msg)
-  return raw
-    .replace(new RegExp(`${THINK_TAG}[\\s\\S]*?${THINK_TAG_END}`, 'g'), '')
-    .replace(new RegExp(`${TOOL_CALLS_TAG}[\\s\\S]*?${TOOL_CALLS_TAG_END}`, 'g'), '')
-    .trim()
+  return (
+    raw
+      .replace(new RegExp(`${THINK_TAG}[\\s\\S]*?${THINK_TAG_END}`, 'g'), '')
+      // Strip orphaned closing </think> and everything before it (mlx_vlm strips opening tag)
+      .replace(new RegExp(`^[\\s\\S]*?${THINK_TAG_END}`, ''), '')
+      .replace(new RegExp(`${TOOL_CALLS_TAG}[\\s\\S]*?${TOOL_CALLS_TAG_END}`, 'g'), '')
+      .trim()
+  )
 }
 
 const splitSegments = (text: string): RenderSegment[] => {
   if (!text) return []
+
+  // Fallback: mlx_vlm strips the opening <think> but keeps </think>.
+  // If </think> is present without a matching <think>, treat everything before
+  // the first </think> as a think segment and continue parsing the rest normally.
+  const closeIdx = text.indexOf(THINK_TAG_END)
+  if (closeIdx !== -1 && !text.includes(THINK_TAG)) {
+    const segments: RenderSegment[] = []
+    const thinkText = text.slice(0, closeIdx)
+    if (thinkText.trim()) segments.push({ type: 'think', text: thinkText })
+    const remainder = text.slice(closeIdx + THINK_TAG_END.length)
+    return segments.concat(splitSegments(remainder))
+  }
 
   const TAGS = [
     { open: THINK_TAG, close: THINK_TAG_END, type: 'think' as const },
@@ -888,7 +909,7 @@ onBeforeMount(() => {
     try {
       loadThreadHistory(threadId.value)
     } catch (e) {
-      console.error('Auto reload history failed:', e)
+      log.error('Auto reload history failed:', e)
     } finally {
       loading.value = false
     }

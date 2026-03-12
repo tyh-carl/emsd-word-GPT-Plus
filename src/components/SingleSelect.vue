@@ -1,4 +1,5 @@
 <template>
+  <div>
   <div :class="tight ? 'mb-0' : 'mb-3'" class="flex items-center gap-2 text-sm font-medium text-main">
     <slot name="icon">
       <component :is="icon" v-if="icon" :size="iconSize" class="text-accent" />
@@ -31,6 +32,7 @@
         <slot name="item" :item="key"> {{ key }} </slot>
       </button>
     </div>
+  </div>
   </div>
 </template>
 
