@@ -217,7 +217,7 @@ export function useChat(options: UseChatOptions) {
         model: settings.openaiCompatibleModelSelect,
         maxTokens: settings.openaiCompatibleMaxTokens,
         temperature: settings.openaiCompatibleTemperature,
-        streaming: settings.openaiCompatibleStreaming === 'on',
+        streaming: true,
       },
     }
 
