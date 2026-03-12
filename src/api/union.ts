@@ -11,6 +11,7 @@ import { createAgent } from 'langchain'
 
 import { IndexedDBSaver } from '@/api/checkpoints'
 import { AgentLogger } from '@/utils/agentLogger'
+import log from '@/utils/logger'
 
 import {
   AgentOptions,
@@ -61,7 +62,6 @@ const ModelCreators: Record<string, (opts: any) => BaseChatModel> = {
       },
       temperature: opts.temperature ?? 0.7,
       maxTokens: opts.maxTokens ?? 800,
-      parallelToolCalls: true,
     })
   },
 
@@ -100,7 +100,6 @@ const ModelCreators: Record<string, (opts: any) => BaseChatModel> = {
       azureOpenAIEndpoint: opts.azureAPIEndpoint,
       azureOpenAIApiDeploymentName: opts.azureDeploymentName,
       azureOpenAIApiVersion: opts.azureAPIVersion ?? '2024-10-01',
-      parallelToolCalls: true,
     })
   },
 
@@ -125,7 +124,7 @@ async function executeChatFlow(model: BaseChatModel, options: ProviderOptions): 
   try {
     if (!options.threadId) {
       options.threadId = crypto.randomUUID()
-      console.log(`[Chat] New thread started: ${options.threadId}`)
+      log.info(`[Chat] New thread started: ${options.threadId}`)
     }
     const agent = createAgent({
       model,
@@ -171,7 +170,7 @@ async function executeChatFlow(model: BaseChatModel, options: ProviderOptions): 
       throw error
     }
     options.errorIssue.value = true
-    console.error(error)
+    log.error(error)
   } finally {
     options.loading.value = false
   }
@@ -306,7 +305,7 @@ async function executeAgentFlow(model: BaseChatModel, options: AgentOptions): Pr
       options.errorIssue.value = 'recursionLimitExceeded'
     }
     logger.finalize('error', error?.message || String(error))
-    console.error('[Agent] Error:', error)
+    log.error('[Agent] Error:', error)
   } finally {
     options.loading.value = false
   }
