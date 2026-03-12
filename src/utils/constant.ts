@@ -1,5 +1,6 @@
-import properNouns from '../../prompts/proper-nouns.json'
 import log from '@/utils/logger'
+
+import properNouns from '../../prompts/proper-nouns.json'
 
 export const PROPER_NOUNS_PLACEHOLDER = '{{PROPER_NOUNS}}'
 
@@ -121,20 +122,11 @@ export const availableModelsForGroq: string[] = [
 export const buildInPrompt = {
   translate: {
     system: (language: string) =>
-      `You are an expert polyglot translator. Your task is to provide professional, context-aware translations into ${language}.
-      Maintain formatting, keep the original tone, and ensure the output is idiomatic and elegant.
+      `Translate text to ${language}. Output ONLY the translation.
 
-Preserve the following proper nouns exactly as specified — do not translate or romanise them:
-
-{{PROPER_NOUNS}}`,
-    user: (text: string, language: string) =>
-      `Task: Translate the following text into ${language}.
-      Constraints:
-      1. Provide a natural-sounding translation suitable for native speakers.
-      2. If the text is technical, use appropriate terminology.
-      3. OUTPUT ONLY the translated text. Do not include "Here is the translation" or any explanations.
-      
-      Text: ${text}`,
+  Preserve these proper nouns exactly — do not translate or romanise them:
+  {{PROPER_NOUNS}}`,
+    user: (text: string, language: string) => `${text}`,
   },
 
   polish: {
