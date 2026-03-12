@@ -457,6 +457,7 @@ import { availableAPIs, buildInPrompt } from '@/utils/constant'
 import { getGeneralToolDefinitions } from '@/utils/generalTools'
 import useSettingForm from '@/utils/settingForm'
 import { Setting_Names, SettingNames, settingPreset } from '@/utils/settingPreset'
+import log from '@/utils/logger'
 import { getWordToolDefinitions } from '@/utils/wordTools'
 const { t } = useI18n()
 const router = useRouter()
@@ -646,11 +647,11 @@ const addWatch = () => {
       () => {
         if (settingPreset[key].saveFunc) {
           ;(settingPreset[key] as any).saveFunc(settingForm.value[key])
-          console.log(`Saved setting ${key} via custom saveFunc with value: ${settingForm.value[key]}`)
+          log.debug(`Saved setting ${key} via custom saveFunc with value: ${settingForm.value[key]}`)
           return
         }
         localStorage.setItem(settingPreset[key].saveKey || key, settingForm.value[key] as string)
-        console.log(`Saved setting ${key} to localStorage with value: ${settingForm.value[key]}`)
+        log.debug(`Saved setting ${key} to localStorage with value: ${settingForm.value[key]}`)
       },
       { deep: true },
     )
@@ -739,7 +740,7 @@ const loadBuiltInPrompts = () => {
         }
       })
     } catch (error) {
-      console.error('Error loading custom built-in prompts:', error)
+      log.error('Error loading custom built-in prompts:', error)
     }
   }
 }
