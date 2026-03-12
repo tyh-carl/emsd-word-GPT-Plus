@@ -1,5 +1,17 @@
+import properNouns from '../../prompts/proper-nouns.json'
+import log from '@/utils/logger'
+
+export const PROPER_NOUNS_PLACEHOLDER = '{{PROPER_NOUNS}}'
+
+export function injectProperNouns(text: string): string {
+  if (!text.includes(PROPER_NOUNS_PLACEHOLDER)) return text
+  const block = '```json\n' + JSON.stringify(properNouns, null, 2) + '\n```'
+  return text.replaceAll(PROPER_NOUNS_PLACEHOLDER, block)
+}
+
 export const languageMap: IStringKeyMap = {
   en: 'English',
+  'zh-hk': '繁體中文',
   es: 'Español',
   fr: 'Français',
   de: 'Deutsch',
@@ -7,7 +19,6 @@ export const languageMap: IStringKeyMap = {
   pt: 'Português',
   hi: 'हिन्दी',
   ar: 'العربية',
-  'zh-hk': '繁體中文',
   ja: '日本語',
   ko: '한국어',
   ru: 'Русский',
@@ -90,7 +101,7 @@ export const availableModelsForOllama: string[] = [
   'ministral-3:latest',
 ]
 
-export const availableModelsForOpenAICompatible: string[] = []
+export const availableModelsForOpenAICompatible: string[] = ['Qwen3.5-27B-4bit']
 
 export const availableModelsForGroq: string[] = [
   'llama-3.1-8b-instant',
@@ -110,8 +121,12 @@ export const availableModelsForGroq: string[] = [
 export const buildInPrompt = {
   translate: {
     system: (language: string) =>
-      `You are an expert polyglot translator. Your task is to provide professional, context-aware translations into ${language}. 
-      Maintain formatting, keep the original tone, and ensure the output is idiomatic and elegant.`,
+      `You are an expert polyglot translator. Your task is to provide professional, context-aware translations into ${language}.
+      Maintain formatting, keep the original tone, and ensure the output is idiomatic and elegant.
+
+Preserve the following proper nouns exactly as specified — do not translate or romanise them:
+
+{{PROPER_NOUNS}}`,
     user: (text: string, language: string) =>
       `Task: Translate the following text into ${language}.
       Constraints:
@@ -272,7 +287,7 @@ export const getBuiltInPrompt = () => {
 
     return result
   } catch (error) {
-    console.error('Error loading custom built-in prompts:', error)
+    log.error('Error loading custom built-in prompts:', error)
     return buildInPrompt
   }
 }

@@ -5,6 +5,8 @@ import { type Ref, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { getAgentResponse, getChatResponse } from '@/api/union'
+import { injectProperNouns } from '@/utils/constant'
+import log from '@/utils/logger'
 import { localStorageKey } from '@/utils/enum'
 import { createGeneralTools, type GeneralToolName } from '@/utils/generalTools'
 import { message as messageUtil } from '@/utils/message'
@@ -45,8 +47,6 @@ const allWordToolNames: WordToolName[] = [
   'insertContentControl',
   'findText',
   'selectSpecificText',
-  'clearHighlights',
-  'insertNewPage',
   'getDocumentStructure',
   'setParagraphFormat',
   'setListFormat',
@@ -159,8 +159,9 @@ export function useChat(options: UseChatOptions) {
 
     const isAgentMode = mode.value === 'agent'
 
-    const finalSystemMessage =
+    const rawSystemMessage =
       customSystemPrompt.value || systemMessage || (isAgentMode ? agentPrompt(lang) : standardPrompt(lang))
+    const finalSystemMessage = injectProperNouns(rawSystemMessage)
 
     const defaultSystemMessage = new SystemMessage(finalSystemMessage)
 
@@ -228,7 +229,7 @@ export function useChat(options: UseChatOptions) {
 
     history.value.push(new AIMessage(''))
 
-    console.log(finalMessages)
+    log.debug(finalMessages)
 
     if (isAgentMode) {
       const tools = getActiveTools()
