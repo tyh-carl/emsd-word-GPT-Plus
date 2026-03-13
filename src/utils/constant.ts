@@ -121,11 +121,10 @@ export const availableModelsForGroq: string[] = [
 ]
 export const buildInPrompt = {
   translate: {
-    system: (language: string) =>
-      `Translate text to ${language}. Output ONLY the translation.
+    system: (language: string) => `Translate text to ${language}. Output ONLY the translation.
 
-  Preserve these proper nouns exactly — do not translate or romanise them:
-  {{PROPER_NOUNS}}`,
+Preserve these proper nouns exactly — do not translate or romanise them:
+{{PROPER_NOUNS}}`,
     user: (text: string, language: string) => `${text}`,
   },
 
