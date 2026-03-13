@@ -182,6 +182,11 @@
         </div>
       </div>
 
+      <!-- Elapsed Timer -->
+      <div v-if="isRunning || elapsedSeconds > 0" class="flex justify-end pr-1 text-xs text-secondary">
+        {{ formatElapsed(elapsedSeconds) }}
+      </div>
+
       <!-- Input Area -->
       <div class="flex flex-col gap-1 rounded-md">
         <div class="flex items-center justify-between gap-2 overflow-hidden">
@@ -310,12 +315,13 @@ import { insertFormattedResult, insertResult } from '@/api/common'
 import CustomButton from '@/components/CustomButton.vue'
 import SingleSelect from '@/components/SingleSelect.vue'
 import { useChat } from '@/composables/useChat'
+import { useElapsedTimer } from '@/composables/useElapsedTimer'
 import { useResizableTextarea } from '@/composables/useResizableTextarea'
 import CheckPointsPage from '@/pages/checkPointsPage.vue'
 import { checkAuth } from '@/utils/common'
 import { buildInPrompt, getBuiltInPrompt, languageMap } from '@/utils/constant'
-import log from '@/utils/logger'
 import { localStorageKey } from '@/utils/enum'
+import log from '@/utils/logger'
 import { message as messageUtil } from '@/utils/message'
 import useSettingForm from '@/utils/settingForm'
 import { settingPreset } from '@/utils/settingPreset'
@@ -396,6 +402,16 @@ const {
   customSystemPrompt,
   onScrollToBottom: () => scrollToBottom(),
 })
+
+const { elapsedSeconds, isRunning } = useElapsedTimer(loading)
+
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, '0')
+  const s = (seconds % 60).toString().padStart(2, '0')
+  return `${m}:${s}`
+}
 
 const displayHistory = computed(() => {
   return history.value.filter(msg => {
