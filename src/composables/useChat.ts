@@ -5,8 +5,10 @@ import { type Ref, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import { getAgentResponse, getChatResponse } from '@/api/union'
+import { injectProperNouns } from '@/utils/constant'
 import { localStorageKey } from '@/utils/enum'
 import { createGeneralTools, type GeneralToolName } from '@/utils/generalTools'
+import log from '@/utils/logger'
 import { message as messageUtil } from '@/utils/message'
 import type useSettingForm from '@/utils/settingForm'
 import { createWordTools, type WordToolName } from '@/utils/wordTools'
@@ -163,6 +165,8 @@ export function useChat(options: UseChatOptions) {
       customSystemPrompt.value || systemMessage || (isAgentMode ? agentPrompt(lang) : standardPrompt(lang))
 
     const defaultSystemMessage = new SystemMessage(finalSystemMessage)
+    log.debug(`Chat history:`)
+    log.debug(history.value)
 
     history.value.push(userMessage)
 
@@ -273,6 +277,7 @@ export function useChat(options: UseChatOptions) {
         },
       })
     } else {
+      log.debug('Calling getChatResponse()...')
       await getChatResponse({
         ...currentConfig,
         messages: finalMessages,
