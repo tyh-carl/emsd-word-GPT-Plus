@@ -52,7 +52,6 @@ export const localStorageKey = {
   openaiCompatibleCustomModels: 'openaiCompatibleCustomModels',
   openaiCompatibleTemperature: 'openaiCompatibleTemperature',
   openaiCompatibleMaxTokens: 'openaiCompatibleMaxTokens',
-  openaiCompatibleStreaming: 'openaiCompatibleStreaming',
   // proxy
   enableProxy: 'enableProxy',
   proxy: 'proxy',

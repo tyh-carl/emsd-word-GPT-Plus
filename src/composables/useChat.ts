@@ -9,6 +9,7 @@ import { injectProperNouns } from '@/utils/constant'
 import { localStorageKey } from '@/utils/enum'
 import { createGeneralTools, type GeneralToolName } from '@/utils/generalTools'
 import log from '@/utils/logger'
+import log from '@/utils/logger'
 import { message as messageUtil } from '@/utils/message'
 import type useSettingForm from '@/utils/settingForm'
 import { createWordTools, type WordToolName } from '@/utils/wordTools'
@@ -47,8 +48,6 @@ const allWordToolNames: WordToolName[] = [
   'insertContentControl',
   'findText',
   'selectSpecificText',
-  'clearHighlights',
-  'insertNewPage',
   'getDocumentStructure',
   'setParagraphFormat',
   'setListFormat',
@@ -161,8 +160,9 @@ export function useChat(options: UseChatOptions) {
 
     const isAgentMode = mode.value === 'agent'
 
-    const finalSystemMessage =
+    const rawSystemMessage =
       customSystemPrompt.value || systemMessage || (isAgentMode ? agentPrompt(lang) : standardPrompt(lang))
+    const finalSystemMessage = injectProperNouns(rawSystemMessage)
 
     const defaultSystemMessage = new SystemMessage(finalSystemMessage)
     log.debug(`Chat history:`)
@@ -220,7 +220,7 @@ export function useChat(options: UseChatOptions) {
         model: settings.openaiCompatibleModelSelect,
         maxTokens: settings.openaiCompatibleMaxTokens,
         temperature: settings.openaiCompatibleTemperature,
-        streaming: settings.openaiCompatibleStreaming === 'on',
+        streaming: true,
       },
     }
 
@@ -232,7 +232,7 @@ export function useChat(options: UseChatOptions) {
 
     history.value.push(new AIMessage(''))
 
-    console.log(finalMessages)
+    log.debug(finalMessages)
 
     if (isAgentMode) {
       const tools = getActiveTools()

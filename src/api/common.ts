@@ -1,6 +1,7 @@
 import { Ref } from 'vue'
 
 import { WordFormatter } from '@/utils/wordFormatter'
+import log from '@/utils/logger'
 
 export function insertResult(result: string, insertType: Ref): void {
   const paragraph = result
@@ -46,7 +47,7 @@ export async function insertFormattedResult(result: string, insertType: Ref): Pr
   try {
     await WordFormatter.insertFormattedResult(result, insertType)
   } catch (error) {
-    console.warn('Formatted insertion failed, falling back to plain text:', error)
+    log.warn('Formatted insertion failed, falling back to plain text:', error)
     insertResult(result, insertType)
   }
 }

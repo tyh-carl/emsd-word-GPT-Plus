@@ -16,21 +16,21 @@
   <ProviderName>EMSD-DTD-ITSS1</ProviderName>
   <DefaultLocale>zh-HK</DefaultLocale>
   <!-- The display name of your add-in. Used on the store and various places of the Office UI such as the add-ins dialog. -->
-  <DisplayName DefaultValue="EMSD Word Assistant" />
+  <DisplayName DefaultValue="EMSD Word Assistant(DEV)" />
   <Description DefaultValue="Integrate the Power of AI Directly into Word"/>
 
   <!-- Icon for your add-in. Used on installation screens and the add-ins dialog. -->
-  <IconUrl DefaultValue="http://localhost:3000/assets/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="http://localhost:3000/assets/icon-80.png"/>
+  <IconUrl DefaultValue="http://localhost:4000/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="http://localhost:4000/assets/icon-80.png"/>
 
   <!--If you plan to submit this add-in to the Office Store, uncomment the SupportUrl element below-->
   <!--<SupportUrl DefaultValue="[Insert the URL of a page that provides support information for the app]" />-->
 
   <!-- Domains that will be allowed when navigating. For example, if you use ShowTaskpane and then have an href link, navigation will only be allowed if the domain is on this list. -->
   <AppDomains>
-    <AppDomain>AppDomain1</AppDomain>
+    <!-- <AppDomain>AppDomain1</AppDomain>
     <AppDomain>AppDomain2</AppDomain>
-    <AppDomain>AppDomain3</AppDomain>
+    <AppDomain>AppDomain3</AppDomain> -->
   </AppDomains>
   <!--End Basic Settings. -->
 
@@ -39,7 +39,7 @@
     <Host Name="Document" />
   </Hosts>
   <DefaultSettings>
-    <SourceLocation DefaultValue="http://localhost:3000/index.html" />
+    <SourceLocation DefaultValue="http://localhost:4000/index.html" />
   </DefaultSettings>
   <!-- End TaskPane Mode integration.  -->
 
@@ -119,25 +119,25 @@
     <!-- You can use resources across hosts and form factors. -->
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="http://localhost:3000/assets/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="http://localhost:3000/assets/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="http://localhost:3000/assets/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="http://localhost:4000/assets/icon-16.png"/>
+        <bt:Image id="Icon.32x32" DefaultValue="http://localhost:4000/assets/icon-32.png"/>
+        <bt:Image id="Icon.80x80" DefaultValue="http://localhost:4000/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://go.microsoft.com/fwlink/?LinkId=276812" />
-        <bt:Url id="Commands.Url" DefaultValue="http://localhost:3000/commands.html" />
-        <bt:Url id="Taskpane.Url" DefaultValue="http://localhost:3000/index.html" />
+        <bt:Url id="Commands.Url" DefaultValue="http://localhost:4000/commands.html" />
+        <bt:Url id="Taskpane.Url" DefaultValue="http://localhost:4000/index.html" />
       </bt:Urls>
       <!-- ShortStrings max characters==125. -->
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="Get started with EMSD Word Assistant!" />
         <bt:String id="CommandsGroup.Label" DefaultValue="EMSD AI Tools" />
-        <bt:String id="TaskpaneButton.Label" DefaultValue="Word Asistant" />
+        <bt:String id="TaskpaneButton.Label" DefaultValue="Word Assistant(DEV)" />
       </bt:ShortStrings>
       <!-- LongStrings max characters==250. -->
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Your sample add-in loaded successfully. Go to the HOME tab and click the 'Show Taskpane' button to get started." />
-        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Click to Show a Taskpane" />
+        <bt:String id="GetStarted.Description" DefaultValue="Your sample add-in loaded successfully. Go to the HOME tab and click the 'Word Assistant' button to get started." />
+        <bt:String id="TaskpaneButton.Tooltip" DefaultValue="Click to Show EMSD Word Assistant" />
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

@@ -2,6 +2,7 @@ import type { RunnableConfig } from '@langchain/core/runnables'
 import { BaseCheckpointSaver, Checkpoint, CheckpointMetadata, type CheckpointTuple } from '@langchain/langgraph'
 export type { CheckpointTuple }
 import Dexie, { Table } from 'dexie'
+import log from '@/utils/logger'
 
 export interface Thread {
   id: string
@@ -58,7 +59,7 @@ export class IndexedDBSaver extends BaseCheckpointSaver {
   async getTuple(config: RunnableConfig): Promise<CheckpointTuple | undefined> {
     try {
       if (!config.configurable?.thread_id) {
-        console.warn('[IndexedDBSaver] getTuple: missing thread_id')
+        log.warn('[IndexedDBSaver] getTuple: missing thread_id')
         return undefined // ✅ 返回 undefined 而不是抛错
       }
 
@@ -79,7 +80,7 @@ export class IndexedDBSaver extends BaseCheckpointSaver {
       }
 
       if (!row) {
-        console.log('[IndexedDBSaver] getTuple: no checkpoint found')
+        log.debug('[IndexedDBSaver] getTuple: no checkpoint found')
         return undefined
       }
 
@@ -96,7 +97,7 @@ export class IndexedDBSaver extends BaseCheckpointSaver {
           : undefined,
       }
     } catch (error) {
-      console.error('[IndexedDBSaver] getTuple error:', error)
+      log.error('[IndexedDBSaver] getTuple error:', error)
       return undefined
     }
   }
@@ -144,7 +145,7 @@ export class IndexedDBSaver extends BaseCheckpointSaver {
 
       const checkpoint_id = config.configurable?.checkpoint_id || checkpoint.id || crypto.randomUUID()
 
-      console.log('[IndexedDBSaver] put:', { thread_id, checkpoint_id })
+      log.debug('[IndexedDBSaver] put:', { thread_id, checkpoint_id })
 
       await db.checkpoints.put({
         thread_id,
@@ -161,7 +162,7 @@ export class IndexedDBSaver extends BaseCheckpointSaver {
         },
       }
     } catch (error) {
-      console.error('[IndexedDBSaver] put error:', error)
+      log.error('[IndexedDBSaver] put error:', error)
       throw error
     }
   }
@@ -211,7 +212,7 @@ export class IndexedDBSaver extends BaseCheckpointSaver {
 
       await this.put(checkpointConfig, newCheckpoint, newMetadata)
     } catch (error) {
-      console.error('[IndexedDBSaver] putWrites error:', error)
+      log.error('[IndexedDBSaver] putWrites error:', error)
       throw error
     }
   }

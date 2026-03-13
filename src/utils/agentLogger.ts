@@ -50,6 +50,8 @@ export interface AgentSessionLog {
   }
 }
 
+import log from '@/utils/logger'
+
 // ── Console styles ────────────────────────────────────────────────────────────
 
 const S = {
@@ -92,10 +94,9 @@ export class AgentLogger {
       },
     }
 
-    console.group(`%c▶ AgentLogger ${sessionId}`, S.session)
-    console.log(`%c  thread   %c${threadId}`, S.muted, '')
-    console.log(`%c  started  %c${new Date(this.session.startedAt).toLocaleTimeString()}`, S.muted, '')
-    console.groupEnd()
+    log.debug(`%c▶ AgentLogger ${sessionId}`, S.session)
+    log.debug(`%c  thread   %c${threadId}`, S.muted, '')
+    log.debug(`%c  started  %c${new Date(this.session.startedAt).toLocaleTimeString()}`, S.muted, '')
   }
 
   // ── Step ──────────────────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ export class AgentLogger {
     this.session.stats.totalSteps = stepNumber
     this.currentStep = step
 
-    console.log(
+    log.debug(
       `%c  Step ${String(stepNumber).padStart(3)} %c[${messageType}]`,
       S.step, S.muted,
     )
@@ -153,9 +154,8 @@ export class AgentLogger {
         : v
     }
 
-    console.group(`%c    #${this.callSeq} → ${toolName}`, S.call)
-    console.log('%c    args', S.muted, displayArgs)
-    console.groupEnd()
+    log.debug(`%c    #${this.callSeq} → ${toolName}`, S.call)
+    log.debug('%c    args', S.muted, displayArgs)
   }
 
   // ── Tool Result (tool execution finished) ─────────────────────────────────
@@ -188,9 +188,9 @@ export class AgentLogger {
       : result
 
     if (success) {
-      console.log(`%c    ✓ ${toolName} %c(${durationMs}ms)`, S.ok, S.muted, '\n    ', displayResult)
+      log.debug(`%c    ✓ ${toolName} %c(${durationMs}ms)`, S.ok, S.muted, '\n    ', displayResult)
     } else {
-      console.warn(`%c    ✗ ${toolName} %c(${durationMs}ms)\n    ${displayResult}`, S.err, S.muted)
+      log.warn(`%c    ✗ ${toolName} %c(${durationMs}ms)\n    ${displayResult}`, S.err, S.muted)
     }
   }
 
@@ -203,7 +203,7 @@ export class AgentLogger {
     const preview = content.length > 400
       ? `${content.substring(0, 400)} …`
       : content
-    console.log(`%c    💬 AI response%c\n    ${preview}`, S.ai, S.muted)
+    log.debug(`%c    💬 AI response%c\n    ${preview}`, S.ai, S.muted)
   }
 
   // ── Session end ───────────────────────────────────────────────────────────
@@ -217,10 +217,10 @@ export class AgentLogger {
     const statusLabel = status === 'completed' ? '✓ COMPLETED' : status === 'aborted' ? '⊘ ABORTED' : '✗ ERROR'
     const style = status === 'completed' ? S.ok : S.err
 
-    console.group(`%c${statusLabel} %c${this.session.sessionId} | ${this.session.durationMs}ms`, style, S.muted)
-    console.log(`%c  steps        %c${this.session.stats.totalSteps}`, S.muted, '')
-    console.log(`%c  tool calls   %c${this.session.stats.totalToolCalls}`, S.muted, '')
-    if (errorMessage) console.error('  error:', errorMessage)
+    log.debug(`%c${statusLabel} %c${this.session.sessionId} | ${this.session.durationMs}ms`, style, S.muted)
+    log.debug(`%c  steps        %c${this.session.stats.totalSteps}`, S.muted, '')
+    log.debug(`%c  tool calls   %c${this.session.stats.totalToolCalls}`, S.muted, '')
+    if (errorMessage) log.error('  error:', errorMessage)
 
     // Summary table
     if (Object.keys(this.session.stats.toolCallDetails).length > 0) {
@@ -233,10 +233,9 @@ export class AgentLogger {
           'avg ms': d.avgDurationMs,
         }
       }
-      console.log('%c  Tool summary:', S.summary)
+      log.debug('%c  Tool summary:', S.summary)
       console.table(tableData)
     }
-    console.groupEnd()
 
     // Persist to store and expose on window for DevTools
     sessionHistory.push(this.session)
