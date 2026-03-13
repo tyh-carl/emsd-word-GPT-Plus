@@ -135,6 +135,7 @@ export function useChat(options: UseChatOptions) {
   const currentCheckpointId = ref<string>('')
   const errorIssue = ref<boolean | string | null>(false)
   const toolCallLog = ref<string[]>([])
+  const currentSystemPrompt = ref<string>('')
 
   const enabledWordTools = ref<WordToolName[]>(loadEnabledWordTools())
   const enabledGeneralTools = ref<GeneralToolName[]>(loadEnabledGeneralTools())
@@ -162,6 +163,7 @@ export function useChat(options: UseChatOptions) {
     const rawSystemMessage =
       customSystemPrompt.value || systemMessage || (isAgentMode ? agentPrompt(lang) : standardPrompt(lang))
     const finalSystemMessage = injectProperNouns(rawSystemMessage)
+    currentSystemPrompt.value = finalSystemMessage
 
     const defaultSystemMessage = new SystemMessage(finalSystemMessage)
     log.debug(`Chat history:`)
@@ -314,6 +316,7 @@ export function useChat(options: UseChatOptions) {
     errorIssue,
     enabledWordTools,
     enabledGeneralTools,
+    currentSystemPrompt,
     processChat,
     stopGeneration,
     getMessageText,

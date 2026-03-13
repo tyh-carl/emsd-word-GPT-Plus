@@ -50,102 +50,129 @@
         </div>
       </div>
 
-      <!-- Chat Messages Container -->
-      <div
-        ref="messagesContainer"
-        class="flex flex-1 flex-col gap-4 overflow-y-auto rounded-md border border-border-secondary bg-surface p-2 shadow-sm"
-      >
+      <div class="flex flex-1 overflow-y-auto">
+        <!-- Chat Messages Container -->
         <div
-          v-if="history.length === 0"
-          class="flex h-full flex-col items-center justify-center gap-4 p-8 text-center text-accent"
-        >
-          <img src="@/assets/images/splash.png" class="h-15 object-contain" alt="EMSD" />
-          <p class="font-semibold text-main">
-            {{ $t('emptyTitle') }}
-          </p>
-          <p class="text-xs font-semibold text-secondary">
-            {{ $t('emptySubtitle') }}
-          </p>
-        </div>
-
-        <div
-          v-for="(msg, index) in displayHistory"
-          :key="msg.id || index"
-          class="group flex items-end gap-4 [.user]:flex-row-reverse"
-          :class="msg instanceof AIMessage ? 'assistant' : 'user'"
+          ref="messagesContainer"
+          class="flex flex-1 flex-col gap-4 overflow-y-auto rounded-md border border-border-secondary bg-surface p-2 shadow-sm"
         >
           <div
-            class="flex min-w-0 flex-1 flex-col gap-1 group-[.assistant]:items-start group-[.assistant]:text-left group-[.user]:items-end group-[.user]:text-left"
+            v-if="history.length === 0"
+            class="flex h-full flex-col items-center justify-center gap-4 p-8 text-center text-accent"
+          >
+            <img src="@/assets/images/splash.png" class="h-15 object-contain" alt="EMSD" />
+            <p class="font-semibold text-main">
+              {{ $t('emptyTitle') }}
+            </p>
+            <p class="text-xs font-semibold text-secondary">
+              {{ $t('emptySubtitle') }}
+            </p>
+          </div>
+
+          <div
+            v-for="(msg, index) in displayHistory"
+            :key="msg.id || index"
+            class="group flex items-end gap-4 [.user]:flex-row-reverse"
+            :class="msg instanceof AIMessage ? 'assistant' : 'user'"
           >
             <div
-              class="group max-w-[95%] rounded-md border border-border-secondary p-1 text-sm leading-[1.4] wrap-break-word whitespace-pre-wrap text-main/90 shadow-sm group-[.assistant]:bg-bg-tertiary group-[.assistant]:text-left group-[.user]:bg-accent/10"
+              class="flex min-w-0 flex-1 flex-col gap-1 group-[.assistant]:items-start group-[.assistant]:text-left group-[.user]:items-end group-[.user]:text-left"
             >
-              <template v-for="(segment, idx) in renderSegments(msg)" :key="idx">
-                <span v-if="segment.type === 'text'">{{ segment.text.trim() }}</span>
-                <details
-                  v-else-if="segment.type === 'think'"
-                  class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary"
-                >
-                  <summary class="cursor-pointer list-none p-1 text-sm font-semibold text-secondary">
-                    Thought process
-                  </summary>
-                  <pre class="m-0 p-1 text-xs wrap-break-word whitespace-pre-wrap text-secondary">{{
-                    segment.text.trim()
-                  }}</pre>
-                </details>
-                <details
-                  v-else-if="segment.type === 'tool'"
-                  class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary"
-                >
-                  <summary class="cursor-pointer list-none p-1 text-sm font-semibold text-secondary">
-                    🔧 {{ t('toolCallsUsed') }}
-                  </summary>
-                  <pre class="m-0 p-1 text-xs wrap-break-word whitespace-pre-wrap text-secondary">{{
-                    segment.text.trim()
-                  }}</pre>
-                </details>
-              </template>
+              <div
+                class="group max-w-[95%] rounded-md border border-border-secondary p-1 text-sm leading-[1.4] wrap-break-word whitespace-pre-wrap text-main/90 shadow-sm group-[.assistant]:bg-bg-tertiary group-[.assistant]:text-left group-[.user]:bg-accent/10"
+              >
+                <template v-for="(segment, idx) in renderSegments(msg)" :key="idx">
+                  <span v-if="segment.type === 'text'">{{ segment.text.trim() }}</span>
+                  <details
+                    v-else-if="segment.type === 'think'"
+                    class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary"
+                  >
+                    <summary class="cursor-pointer list-none p-1 text-sm font-semibold text-secondary">
+                      Thought process
+                    </summary>
+                    <pre class="m-0 p-1 text-xs wrap-break-word whitespace-pre-wrap text-secondary">{{
+                      segment.text.trim()
+                    }}</pre>
+                  </details>
+                  <details
+                    v-else-if="segment.type === 'tool'"
+                    class="mb-1 rounded-sm border border-border-secondary bg-bg-secondary"
+                  >
+                    <summary class="cursor-pointer list-none p-1 text-sm font-semibold text-secondary">
+                      🔧 {{ t('toolCallsUsed') }}
+                    </summary>
+                    <pre class="m-0 p-1 text-xs wrap-break-word whitespace-pre-wrap text-secondary">{{
+                      segment.text.trim()
+                    }}</pre>
+                  </details>
+                </template>
+              </div>
+              <div v-if="!(msg instanceof AIMessage) && index === lastHumanMessageIndex" class="flex gap-1">
+                <CustomButton
+                  :title="t('regenerate')"
+                  text=""
+                  :icon="RefreshCw"
+                  type="secondary"
+                  class="mx-1 bg-surface! p-2! text-secondary!"
+                  :icon-size="20"
+                  :disabled="loading"
+                  @click="regenerateFrom(index)"
+                />
+              </div>
+              <div v-if="msg instanceof AIMessage" class="flex gap-1">
+                <CustomButton
+                  :title="t('replaceSelectedText')"
+                  text=""
+                  :icon="FileText"
+                  type="secondary"
+                  class="mx-1 bg-surface! p-2! text-secondary!"
+                  :icon-size="20"
+                  @click="insertToDocument(cleanMessageText(msg), 'replace')"
+                />
+                <CustomButton
+                  :title="t('appendToSelection')"
+                  text=""
+                  :icon="Plus"
+                  type="secondary"
+                  class="mx-1 bg-surface! p-2! text-secondary!"
+                  :icon-size="20"
+                  @click="insertToDocument(cleanMessageText(msg), 'append')"
+                />
+                <CustomButton
+                  :title="t('copyToClipboard')"
+                  text=""
+                  :icon="Copy"
+                  type="secondary"
+                  class="mx-1 bg-surface! p-2! text-secondary!"
+                  :icon-size="20"
+                  @click="copyToClipboard(cleanMessageText(msg))"
+                />
+              </div>
             </div>
-            <div v-if="!(msg instanceof AIMessage) && index === lastHumanMessageIndex" class="flex gap-1">
-              <CustomButton
-                :title="t('regenerate')"
-                text=""
-                :icon="RefreshCw"
-                type="secondary"
-                class="mx-1 bg-surface! p-2! text-secondary!"
-                :icon-size="20"
-                :disabled="loading"
-                @click="regenerateFrom(index)"
-              />
-            </div>
-            <div v-if="msg instanceof AIMessage" class="flex gap-1">
-              <CustomButton
-                :title="t('replaceSelectedText')"
-                text=""
-                :icon="FileText"
-                type="secondary"
-                class="mx-1 bg-surface! p-2! text-secondary!"
-                :icon-size="20"
-                @click="insertToDocument(cleanMessageText(msg), 'replace')"
-              />
-              <CustomButton
-                :title="t('appendToSelection')"
-                text=""
-                :icon="Plus"
-                type="secondary"
-                class="mx-1 bg-surface! p-2! text-secondary!"
-                :icon-size="20"
-                @click="insertToDocument(cleanMessageText(msg), 'append')"
-              />
-              <CustomButton
-                :title="t('copyToClipboard')"
-                text=""
-                :icon="Copy"
-                type="secondary"
-                class="mx-1 bg-surface! p-2! text-secondary!"
-                :icon-size="20"
-                @click="copyToClipboard(cleanMessageText(msg))"
-              />
+          </div>
+        </div>
+        <!-- Debug Container -->
+        <div
+          v-if="isDev"
+          class="flex w-60 flex-1 flex-col gap-4 overflow-y-auto rounded-md border border-border-secondary bg-surface p-2"
+        >
+          <!-- Show current system prompt-->
+          <div class="max-h-30 overflow-y-auto">
+            <span class="mb-1 text-xs font-semibold text-secondary">System Prompt</span>
+            <pre class="m-0 text-xs wrap-break-word whitespace-pre-wrap text-secondary">{{
+              currentSystemPrompt || '(none)'
+            }}</pre>
+          </div>
+          <!-- Show current message history-->
+          <div>
+            <span class="mb-1 text-xs font-semibold text-secondary">Message History ({{ history.length }})</span>
+            <div v-for="(msg, i) in history" :key="i" class="mt-0.5 rounded border border-border-secondary p-0.5">
+              <span class="text-xs font-semibold" :class="msg instanceof AIMessage ? 'text-accent' : 'text-main'">
+                {{ msg instanceof AIMessage ? 'AI' : 'Human' }}
+              </span>
+              <pre class="m-0 text-xs wrap-break-word whitespace-pre-wrap text-secondary"
+                >{{ getMessageText(msg).slice(0, 200) }}{{ getMessageText(msg).length > 200 ? '...' : '' }}</pre
+              >
             </div>
           </div>
         </div>
@@ -341,6 +368,7 @@ interface SavedPrompt {
 const savedPrompts = ref<SavedPrompt[]>([])
 const selectedPromptId = ref<string>('')
 const customSystemPrompt = ref<string>('')
+const isDev = import.meta.env.DEV
 
 function loadSavedPrompts() {
   const stored = localStorage.getItem('savedPrompts')
@@ -393,6 +421,7 @@ const {
   abortController,
   threadId,
   currentCheckpointId,
+  currentSystemPrompt,
   processChat,
   stopGeneration,
   getMessageText,
@@ -557,6 +586,7 @@ function startNewChat() {
   threadId.value = uuidv4()
   customSystemPrompt.value = ''
   selectedPromptId.value = ''
+  currentSystemPrompt.value = ''
   adjustTextareaHeight()
 }
 
@@ -895,6 +925,8 @@ async function loadThreadHistory(targetThreadId: string) {
     const latestCheckpoint = checkpoints[checkpoints.length - 1]
     const messages = latestCheckpoint.checkpoint.channel_values.messages
     if (messages && Array.isArray(messages)) {
+      const systemMsg = messages.find((m: any) => m.type === 'system' || m._getType?.() === 'system')
+      if (systemMsg) currentSystemPrompt.value = typeof systemMsg.content === 'string' ? systemMsg.content : ''
       history.value = reconstructMessages(messages)
       currentCheckpointId.value = latestCheckpoint.config.configurable?.checkpoint_id || ''
     } else {

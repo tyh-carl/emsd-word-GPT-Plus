@@ -125,7 +125,8 @@ export const buildInPrompt = {
 
 Preserve these proper nouns exactly — do not translate or romanise them:
 {{PROPER_NOUNS}}`,
-    user: (text: string, language: string) => `${text}`,
+    user: (text: string, language: string) => `Text to translate: 
+${text}`,
   },
 
   polish: {
