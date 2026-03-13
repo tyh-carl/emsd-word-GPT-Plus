@@ -157,14 +157,14 @@
           class="flex w-60 flex-1 flex-col gap-4 overflow-y-auto rounded-md border border-border-secondary bg-surface p-2"
         >
           <!-- Show current system prompt-->
-          <div class="max-h-30 overflow-y-auto">
+          <div class="h-30 overflow-y-auto">
             <span class="mb-1 text-xs font-semibold text-secondary">System Prompt</span>
             <pre class="m-0 text-xs wrap-break-word whitespace-pre-wrap text-secondary">{{
               currentSystemPrompt || '(none)'
             }}</pre>
           </div>
           <!-- Show current message history-->
-          <div>
+          <div class="overflow-y-auto">
             <span class="mb-1 text-xs font-semibold text-secondary">Message History ({{ history.length }})</span>
             <div v-for="(msg, i) in history" :key="i" class="mt-0.5 rounded border border-border-secondary p-0.5">
               <span class="text-xs font-semibold" :class="msg instanceof AIMessage ? 'text-accent' : 'text-main'">
